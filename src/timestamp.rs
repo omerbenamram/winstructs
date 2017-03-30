@@ -7,6 +7,8 @@ use std::fmt::{Display,Debug};
 use std::io::Read;
 use serde::{ser};
 
+pub static mut TIMESTAMP_FORMAT: &'static str = "%Y-%m-%d %H:%M:%S%.3f";
+
 pub struct WinTimestamp(
     pub u64
 );
@@ -35,7 +37,10 @@ impl ser::Serialize for WinTimestamp {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: ser::Serializer
     {
-        serializer.serialize_str(&format!("{}", self.to_datetime()))
+        serializer.serialize_str(
+            &format!("{}",
+            self.to_datetime().format(unsafe{TIMESTAMP_FORMAT}).to_string())
+        )
     }
 }
 

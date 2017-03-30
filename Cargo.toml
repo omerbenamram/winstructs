@@ -1,6 +1,6 @@
 [package]
 name = "r-winstructs"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Matthew Seyer <https://github.com/forensicmatt/r-winstructs>"]
 
 [lib]
