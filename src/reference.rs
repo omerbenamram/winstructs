@@ -1,4 +1,5 @@
 use serde::{ser};
+use std::mem::transmute;
 use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 use std::fmt::{Display,Debug};
 use std::fmt;
@@ -22,6 +23,19 @@ pub struct MftEnumReference{
 // https://jmharkness.wordpress.com/2011/01/27/mft-file-reference-number/
 pub struct MftReference(pub u64);
 impl MftReference{
+    fn get_from_entry_and_seq(entry: u64, sequence: u16) -> MftReference{
+        let entry_buffer: [u8; 8] = unsafe {
+            transmute(entry.to_le())
+        };
+        let seq_buffer: [u8; 2] = unsafe {
+            transmute(sequence.to_le())
+        };
+        let mut ref_buffer = vec![];
+        ref_buffer.extend_from_slice(&entry_buffer[0..6]);
+        ref_buffer.extend_from_slice(&seq_buffer);
+
+        MftReference(LittleEndian::read_u64(&ref_buffer[0..8]))
+    }
     fn get_enum_ref(&self)->MftEnumReference{
         let mut raw_buffer = vec![];
         raw_buffer.write_u64::<LittleEndian>(self.0).unwrap();
@@ -68,4 +82,10 @@ fn test_reference() {
     assert_eq!(mft_reference.0,10477624533077459059);
     assert_eq!(format!("{}", mft_reference),"10477624533077459059");
     // assert_eq!(mft_reference.sequence,37224);
+
+    let mft_reference_01 = MftReference::get_from_entry_and_seq(
+        115,
+        37224
+    );
+    assert_eq!(mft_reference_01.0,10477624533077459059);
 }
