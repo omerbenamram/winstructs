@@ -23,6 +23,19 @@ pub struct MftEnumReference{
 // https://jmharkness.wordpress.com/2011/01/27/mft-file-reference-number/
 pub struct MftReference(pub u64);
 impl MftReference{
+    fn from_entry_and_seq(&mut self, entry: u64, sequence: u16){
+        let entry_buffer: [u8; 8] = unsafe {
+            transmute(entry.to_le())
+        };
+        let seq_buffer: [u8; 2] = unsafe {
+            transmute(sequence.to_le())
+        };
+        let mut ref_buffer = vec![];
+        ref_buffer.extend_from_slice(&entry_buffer[0..6]);
+        ref_buffer.extend_from_slice(&seq_buffer);
+
+        self.0 = LittleEndian::read_u64(&ref_buffer[0..8]);
+    }
     fn get_from_entry_and_seq(entry: u64, sequence: u16) -> MftReference{
         let entry_buffer: [u8; 8] = unsafe {
             transmute(entry.to_le())
@@ -74,6 +87,7 @@ impl ser::Serialize for MftReference {
 
 #[test]
 fn test_reference() {
+    use std::mem;
     let raw_reference: &[u8] = &[0x73,0x00,0x00,0x00,0x00,0x00,0x68,0x91];
 
     let mft_reference = MftReference(
@@ -88,4 +102,14 @@ fn test_reference() {
         37224
     );
     assert_eq!(mft_reference_01.0,10477624533077459059);
+
+    let mut mft_reference_02: MftReference = unsafe {
+        mem::zeroed()
+    };
+    assert_eq!(mft_reference_02.0,0);
+    mft_reference_02.from_entry_and_seq(
+        115,
+        37224
+    );
+    assert_eq!(mft_reference_02.0,10477624533077459059);
 }
