@@ -23,7 +23,7 @@ pub struct MftEnumReference{
 // https://jmharkness.wordpress.com/2011/01/27/mft-file-reference-number/
 pub struct MftReference(pub u64);
 impl MftReference{
-    fn from_entry_and_seq(&mut self, entry: u64, sequence: u16){
+    pub fn from_entry_and_seq(&mut self, entry: u64, sequence: u16){
         let entry_buffer: [u8; 8] = unsafe {
             transmute(entry.to_le())
         };
@@ -36,7 +36,7 @@ impl MftReference{
 
         self.0 = LittleEndian::read_u64(&ref_buffer[0..8]);
     }
-    fn get_from_entry_and_seq(entry: u64, sequence: u16) -> MftReference{
+    pub fn get_from_entry_and_seq(entry: u64, sequence: u16) -> MftReference{
         let entry_buffer: [u8; 8] = unsafe {
             transmute(entry.to_le())
         };
@@ -49,7 +49,7 @@ impl MftReference{
 
         MftReference(LittleEndian::read_u64(&ref_buffer[0..8]))
     }
-    fn get_enum_ref(&self)->MftEnumReference{
+    pub fn get_enum_ref(&self)->MftEnumReference{
         let mut raw_buffer = vec![];
         raw_buffer.write_u64::<LittleEndian>(self.0).unwrap();
         MftEnumReference{
