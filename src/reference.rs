@@ -61,6 +61,14 @@ impl MftReference{
             sequence: LittleEndian::read_u16(&raw_buffer[6..8])
         }
     }
+    pub fn get_entry_number(&self)->u64{
+        let mut raw_buffer = vec![];
+        raw_buffer.write_u64::<LittleEndian>(self.0).unwrap();
+
+        LittleEndian::read_u64(
+            &[&raw_buffer[0..6], &[0,0]].concat()
+        )
+    }
 }
 impl Display for MftReference {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
