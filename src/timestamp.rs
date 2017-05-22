@@ -9,6 +9,7 @@ use serde::{ser};
 
 pub static mut TIMESTAMP_FORMAT: &'static str = "%Y-%m-%d %H:%M:%S%.3f";
 
+#[derive(Clone)]
 pub struct WinTimestamp(
     pub u64
 );
