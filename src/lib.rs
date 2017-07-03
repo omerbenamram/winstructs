@@ -7,3 +7,4 @@ extern crate time;
 pub mod timestamp;
 pub mod reference;
 pub mod serialize;
+pub mod guid;
