@@ -95,7 +95,7 @@ impl ser::Serialize for MftReference {
 }
 
 #[test]
-fn test_reference() {
+fn test_mft_reference() {
     use std::mem;
     let raw_reference: &[u8] = &[0x73,0x00,0x00,0x00,0x00,0x00,0x68,0x91];
 
