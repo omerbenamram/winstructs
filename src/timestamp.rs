@@ -47,7 +47,7 @@ impl ser::Serialize for WinTimestamp {
 
 #[derive(Clone)]
 pub struct DosDate(
-    u16
+    pub u16
 );
 impl DosDate {
     pub fn new<R: Read>(mut buffer: R)->Result<DosDate,Error>{
@@ -87,7 +87,7 @@ impl ser::Serialize for DosDate {
 
 #[derive(Clone)]
 pub struct DosTime(
-    u16
+    pub u16
 );
 impl DosTime {
     pub fn new<R: Read>(mut buffer: R)->Result<DosTime,Error>{
@@ -126,7 +126,9 @@ impl ser::Serialize for DosTime {
 }
 
 #[derive(Clone)]
-pub struct DosDateTime(u32);
+pub struct DosDateTime(
+    pub u32
+);
 impl DosDateTime {
     pub fn to_datetime(&self) -> chrono::NaiveDateTime {
         chrono::NaiveDateTime::new(
