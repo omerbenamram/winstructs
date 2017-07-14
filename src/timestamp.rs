@@ -130,6 +130,14 @@ pub struct DosDateTime(
     pub u32
 );
 impl DosDateTime {
+    pub fn new<R: Read>(mut buffer: R)->Result<DosDateTime,Error>{
+        let dos_datetime = DosDateTime(
+            buffer.read_u32::<LittleEndian>()?
+        );
+
+        Ok(dos_datetime)
+    }
+
     pub fn to_datetime(&self) -> chrono::NaiveDateTime {
         chrono::NaiveDateTime::new(
             DosDate((self.0 & 0xffff) as u16).to_date(),
