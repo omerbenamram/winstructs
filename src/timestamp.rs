@@ -66,9 +66,7 @@ impl DosDate {
         let mut month = (self.0 >> 5) & 0x0F;
         if month == 0 { month = 1 }
         let year = (self.0 >> 9) + 1980;
-
-        println!("{}-{}-{}",month,day,year);
-
+        
         chrono::NaiveDate::from_ymd(
             year as i32,
             month as u32,
