@@ -8,6 +8,7 @@ use std::io::Read;
 use serde::{ser};
 
 pub static mut TIMESTAMP_FORMAT: &'static str = "%Y-%m-%d %H:%M:%S%.3f";
+pub static mut DATE_FORMAT: &'static str = "%Y-%m-%d";
 
 #[derive(Clone)]
 pub struct WinTimestamp(
@@ -19,7 +20,9 @@ impl WinTimestamp {
         let t_micro = self.0 / 10;
         // Add microseconds to timestamp via Duration
         (
-            chrono::NaiveDate::from_ymd(1601, 1, 1).and_hms_nano(0, 0, 0, 0) + // Win Epoc = 1601-01-01
+            chrono::NaiveDate::from_ymd(
+                1601, 1, 1
+            ).and_hms_nano(0, 0, 0, 0) + // Win Epoc = 1601-01-01
             time::Duration::microseconds(t_micro as i64)
         ) as chrono::NaiveDateTime
     }
@@ -58,15 +61,24 @@ impl DosDate {
     }
 
     pub fn to_date(&self) -> chrono::NaiveDate {
-        let day = self.0 & 0x1F;
-        let month = (self.0 >> 5) & 0x0F;
+        let mut day = self.0 & 0x1F;
+        if day == 0 { day = 1 }
+        let mut month = (self.0 >> 5) & 0x0F;
+        if month == 0 { month = 1 }
         let year = (self.0 >> 9) + 1980;
+
+        println!("{}-{}-{}",month,day,year);
 
         chrono::NaiveDate::from_ymd(
             year as i32,
             month as u32,
             day as u32
         )
+    }
+}
+impl Display for DosDate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}",self.to_date())
     }
 }
 impl Debug for DosDate {
@@ -80,7 +92,7 @@ impl ser::Serialize for DosDate {
     {
         serializer.serialize_str(
             &format!("{}",
-            self.to_date().format(unsafe{TIMESTAMP_FORMAT}).to_string())
+            self.to_date().format(unsafe{DATE_FORMAT}).to_string())
         )
     }
 }
@@ -109,6 +121,11 @@ impl DosTime {
         )
     }
 }
+impl Display for DosTime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}",self.to_time())
+    }
+}
 impl Debug for DosTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,"{}",self.to_time())
@@ -120,7 +137,7 @@ impl ser::Serialize for DosTime {
     {
         serializer.serialize_str(
             &format!("{}",
-            self.to_time().format(unsafe{TIMESTAMP_FORMAT}).to_string())
+            self.to_time())
         )
     }
 }
@@ -195,11 +212,31 @@ fn test_dosdate() {
     assert_eq!(dos_date.0,16492);
 }
 #[test]
+fn test_dosdate_zeros() {
+    let raw_date: &[u8] = &[0x00,0x00];
+    let date = DosDate::new(
+        raw_date
+    ).unwrap();
+    assert_eq!(format!("{}",date),"1980-01-01");
+    assert_eq!(format!("{:?}",date),"1980-01-01");
+    assert_eq!(date.0,0);
+}
+#[test]
 fn test_dostime() {
     let dos_time = DosTime(43874);
 
     assert_eq!(format!("{:?}",dos_time),"21:27:04");
     assert_eq!(dos_time.0,43874);
+}
+#[test]
+fn test_dostime_zeros() {
+    let raw_time: &[u8] = &[0x00,0x00];
+    let time = DosTime::new(
+        raw_time
+    ).unwrap();
+    assert_eq!(format!("{}",time),"00:00:00");
+    assert_eq!(format!("{:?}",time),"00:00:00");
+    assert_eq!(time.0,0);
 }
 #[test]
 fn test_dosdatetime() {
