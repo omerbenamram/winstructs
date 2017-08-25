@@ -31,15 +31,30 @@ impl From<io::Error> for SecDescError {
 
 #[derive(Serialize,Debug)]
 pub struct SecurityDescriptor {
-    pub header: SecDescHeader
+    pub header: SecDescHeader,
+    pub owner_sid: Sid,
+    pub group_sid: Sid
 }
 impl SecurityDescriptor {
-    pub fn new<R: Read>(mut reader: R) -> Result<SecurityDescriptor,SecDescError> {
-        let header = SecDescHeader::new(reader)?;
+    pub fn new<Rs: Read+Seek>(mut reader: Rs) -> Result<SecurityDescriptor,SecDescError> {
+        let _offset = reader.seek(SeekFrom::Current(0))?;
+        let header = SecDescHeader::new(&mut reader)?;
+
+        reader.seek(
+            SeekFrom::Start(_offset + header.owner_sid_offset as u64)
+        )?;
+        let owner_sid = Sid::new(&mut reader)?;
+
+        reader.seek(
+            SeekFrom::Start(_offset + header.group_sid_offset as u64)
+        )?;
+        let group_sid = Sid::new(&mut reader)?;
 
         Ok(
             SecurityDescriptor {
-                header: header
+                header: header,
+                owner_sid: owner_sid,
+                group_sid: group_sid
             }
         )
     }
