@@ -9,9 +9,11 @@ name = "rwinstructs"
 [dependencies]
 time = "*"
 serde = "0.9"
-serde_derive = "0.9"
-serde_json = "0.9"
+bitflags = "*"
 byteorder = "*"
+serde_json = "0.9"
+trace-error = "0.1.5"
+serde_derive = "0.9"
 
 [dependencies.chrono]
 version = "*"

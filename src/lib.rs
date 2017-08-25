@@ -1,5 +1,7 @@
+#[macro_use] extern crate bitflags;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate serde_json;
+#[macro_use] extern crate trace_error;
 extern crate byteorder;
 extern crate serde;
 extern crate chrono;
@@ -8,3 +10,4 @@ pub mod timestamp;
 pub mod reference;
 pub mod serialize;
 pub mod guid;
+pub mod security;
