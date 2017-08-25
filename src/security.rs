@@ -2,10 +2,9 @@ use byteorder::{ReadBytesExt, LittleEndian, BigEndian};
 use serde::{ser};
 use std::fmt;
 use std::io;
-use std::fmt::Display;
 use std::io::Read;
+use std::io::{Seek,SeekFrom};
 use std::io::Cursor;
-use std::mem::transmute;
 
 #[derive(Debug)]
 pub enum SdErrorKind {

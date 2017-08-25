@@ -1,7 +1,7 @@
 #[macro_use] extern crate bitflags;
 #[macro_use] extern crate serde_derive;
-#[macro_use] extern crate serde_json;
 #[macro_use] extern crate trace_error;
+extern crate serde_json;
 extern crate byteorder;
 extern crate serde;
 extern crate chrono;
