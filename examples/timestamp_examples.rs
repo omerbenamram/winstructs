@@ -1,8 +1,7 @@
-#[macro_use] extern crate serde_json;
+extern crate serde_json;
 extern crate rwinstructs;
 extern crate byteorder;
 use rwinstructs::timestamp;
-use byteorder::{ByteOrder, LittleEndian};
 
 fn example_001() {
     let raw_timestamp: &[u8] = &[0x53,0xC7,0x8B,0x18,0xC5,0xCC,0xCE,0x01];
