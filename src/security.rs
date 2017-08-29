@@ -151,6 +151,51 @@ const SYSTEM_AUDIT_CALLBACK_OBJECT_ACE_TYPE: u8 = 0x0f;
 const SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE: u8 = 0x10;
 const SYSTEM_MANDATORY_LABEL_ACE_TYPE: u8 = 0x11;
 
+pub struct AceType(pub u8);
+impl AceType {
+    pub fn as_string(&self)->String{
+        match self.0 {
+            0x00 => "ACCESS_ALLOWED".to_string(),
+            0x01 => "ACCESS_DENIED".to_string(),
+            0x03 => "SYSTEM_ALARM".to_string(),
+            0x04 => "ACCESS_ALLOWED_COMPOUND".to_string(),
+            0x05 => "ACCESS_ALLOWED_OBJECT".to_string(),
+            0x06 => "ACCESS_DENIED_OBJECT".to_string(),
+            0x07 => "SYSTEM_AUDIT_OBJECT".to_string(),
+            0x08 => "ACCESS_ALLOWED_CALLBACK".to_string(),
+            0x0a => "ACCESS_DENIED_CALLBACK".to_string(),
+            0x0b => "ACCESS_ALLOWED_CALLBACK_OBJECT".to_string(),
+            0x0c => "ACCESS_DENIED_CALLBACK_OBJECT".to_string(),
+            0x0d => "SYSTEM_AUDIT_CALLBACK".to_string(),
+            0x0e => "SYSTEM_ALARM_CALLBACK".to_string(),
+            0x0f => "SYSTEM_AUDIT_CALLBACK_OBJECT".to_string(),
+            0x10 => "SYSTEM_ALARM_CALLBACK_OBJECT".to_string(),
+            0x11 => "SYSTEM_MANDATORY_LABEL".to_string(),
+            _ => format!("UNHANDLED_TYPE: 0x{:02X}",self.0)
+        }
+    }
+    pub fn as_u8(&self)->u8{
+        self.0
+    }
+}
+impl fmt::Display for AceType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}",self.as_string())
+    }
+}
+impl fmt::Debug for AceType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}",self.as_string())
+    }
+}
+impl ser::Serialize for AceType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: ser::Serializer
+    {
+        serializer.serialize_str(&self.as_string())
+    }
+}
+
 bitflags! {
     pub struct AceFlags: u8 {
         const OBJECT_INHERIT_ACE            = 0x01;
@@ -291,14 +336,14 @@ impl Acl{
 
 #[derive(Serialize,Debug)]
 pub struct Ace {
-    pub ace_type: u8,
+    pub ace_type: AceType,
     pub ace_flags: AceFlags,
     pub size: u16,
     pub data: AceData
 }
 impl Ace {
     pub fn new<R: Read>(mut reader: R) -> Result<Ace,SecDescError> {
-        let ace_type = reader.read_u8()?;
+        let ace_type = AceType(reader.read_u8()?);
         let ace_flags = AceFlags::from_bits_truncate(
             reader.read_u8()?
         );
@@ -309,12 +354,40 @@ impl Ace {
         reader.read_exact(&mut data_buffer)?;
 
         // Get data structure
-        let data = match ace_type {
-            ACCESS_ALLOWED_ACE_TYPE => {
+        let data = match ace_type.as_u8() {
+            ACCESS_ALLOWED_ACE_TYPE |
+            ACCESS_DENIED_ACE_TYPE |
+            SYSTEM_AUDIT_ACE_TYPE |
+            SYSTEM_ALARM_ACE_TYPE |
+            ACCESS_ALLOWED_CALLBACK_ACE_TYPE |
+            ACCESS_DENIED_CALLBACK_ACE_TYPE |
+            SYSTEM_AUDIT_CALLBACK_ACE_TYPE |
+            SYSTEM_ALARM_CALLBACK_ACE_TYPE |
+            SYSTEM_MANDATORY_LABEL_ACE_TYPE => {
                 AceData::Basic(
                     AceBasic::new(
                         Cursor::new(data_buffer)
                     )?
+                )
+            },
+            ACCESS_ALLOWED_OBJECT_ACE_TYPE |
+            ACCESS_DENIED_OBJECT_ACE_TYPE |
+            SYSTEM_AUDIT_OBJECT_ACE_TYPE |
+            SYSTEM_ALARM_OBJECT_ACE_TYPE |
+            ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE |
+            ACCESS_DENIED_CALLBACK_OBJECT_ACE_TYPE |
+            SYSTEM_AUDIT_CALLBACK_OBJECT_ACE_TYPE |
+            SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE => {
+                AceData::Object(
+                    AceObject::new(
+                        Cursor::new(data_buffer)
+                    )?
+                )
+            },
+            // Unknown data structures
+            ACCESS_ALLOWED_COMPOUND_ACE_TYPE => {
+                AceData::Unhandled(
+                    RawAce(data_buffer)
                 )
             },
             _ => {
