@@ -34,12 +34,15 @@ impl From<io::Error> for SecDescError {
 pub struct SecurityDescriptor {
     pub header: SecDescHeader,
     pub owner_sid: Sid,
-    pub group_sid: Sid
+    pub group_sid: Sid,
+    pub dacl: Option<Acl>,
+    pub sacl: Option<Acl>
 }
 impl SecurityDescriptor {
     pub fn new<Rs: Read+Seek>(mut reader: Rs) -> Result<SecurityDescriptor,SecDescError> {
         let _offset = reader.seek(SeekFrom::Current(0))?;
         let header = SecDescHeader::new(&mut reader)?;
+        debug!("{} {:?}",_offset,header);
 
         reader.seek(
             SeekFrom::Start(_offset + header.owner_sid_offset as u64)
@@ -51,11 +54,35 @@ impl SecurityDescriptor {
         )?;
         let group_sid = Sid::new(&mut reader)?;
 
+        let dacl = match header.dacl_offset > 0 {
+            true => {
+                debug!("dacl at offset: {}",_offset + header.dacl_offset as u64);
+                reader.seek(
+                    SeekFrom::Start(_offset + header.dacl_offset as u64)
+                )?;
+                Some(Acl::new(&mut reader)?)
+            },
+            false => None
+        };
+
+        let sacl = match header.sacl_offset > 0 {
+            true => {
+                debug!("sacl at offset: {}",_offset + header.sacl_offset as u64);
+                reader.seek(
+                    SeekFrom::Start(_offset + header.sacl_offset as u64)
+                )?;
+                Some(Acl::new(&mut reader)?)
+            },
+            false => None
+        };
+
         Ok(
             SecurityDescriptor {
                 header: header,
                 owner_sid: owner_sid,
-                group_sid: group_sid
+                group_sid: group_sid,
+                dacl: dacl,
+                sacl: sacl
             }
         )
     }
@@ -112,8 +139,13 @@ impl SecDescHeader {
         );
         let owner_sid_offset = reader.read_u32::<LittleEndian>()?;
         let group_sid_offset = reader.read_u32::<LittleEndian>()?;
-        let dacl_offset = reader.read_u32::<LittleEndian>()?;
+
+        // Does sacl offset or dacl offset come first??
+        // logicly and Zimmerman's 010 Template show dacl come first
+        // but libyal and msdn documentation show dacl comes first
+        // https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-descriptor-header
         let sacl_offset = reader.read_u32::<LittleEndian>()?;
+        let dacl_offset = reader.read_u32::<LittleEndian>()?;
 
         Ok(
             SecDescHeader {
