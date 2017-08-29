@@ -1,3 +1,5 @@
+#[macro_use] extern crate log;
+extern crate env_logger;
 extern crate serde_json;
 extern crate rwinstructs;
 use rwinstructs::security;
@@ -79,6 +81,7 @@ fn security_descriptor_01() {
 }
 
 fn main() {
+    env_logger::init().unwrap();
     ace_example_01();
     acl_example_01();
     security_descriptor_01();
