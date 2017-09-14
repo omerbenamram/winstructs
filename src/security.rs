@@ -8,13 +8,13 @@ use std::io::Read;
 use std::io::{Seek,SeekFrom};
 use std::io::Cursor;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum SdErrorKind {
     IoError,
     ValidationError
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct SecDescError {
     pub message: String,
     pub kind: SdErrorKind,
@@ -30,7 +30,7 @@ impl From<io::Error> for SecDescError {
     }
 }
 
-#[derive(Serialize,Debug)]
+#[derive(Serialize,Debug,Clone)]
 pub struct SecurityDescriptor {
     pub header: SecDescHeader,
     pub owner_sid: Sid,
@@ -120,7 +120,7 @@ impl ser::Serialize for SdControlFlags {
     }
 }
 
-#[derive(Serialize,Debug)]
+#[derive(Serialize,Debug,Clone)]
 pub struct SecDescHeader {
     pub revision_number: u8,
     pub padding1: u8,
@@ -183,6 +183,7 @@ const SYSTEM_AUDIT_CALLBACK_OBJECT_ACE_TYPE: u8 = 0x0f;
 const SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE: u8 = 0x10;
 const SYSTEM_MANDATORY_LABEL_ACE_TYPE: u8 = 0x11;
 
+#[derive(Clone)]
 pub struct AceType(pub u8);
 impl AceType {
     pub fn as_string(&self)->String{
@@ -330,7 +331,7 @@ impl ser::Serialize for FolderAccessFlags {
 
 // ACL
 // https://github.com/libyal/libfwnt/wiki/Security-Descriptor#access-control-list-acl
-#[derive(Serialize,Debug)]
+#[derive(Serialize,Debug,Clone)]
 pub struct Acl {
     pub revision: u8,
     pub padding1: u8,
@@ -366,7 +367,7 @@ impl Acl{
     }
 }
 
-#[derive(Serialize,Debug)]
+#[derive(Serialize,Debug,Clone)]
 pub struct Ace {
     pub ace_type: AceType,
     pub ace_flags: AceFlags,
@@ -440,7 +441,7 @@ impl Ace {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum AceData {
     Basic(AceBasic),
@@ -448,7 +449,7 @@ pub enum AceData {
     Unhandled(RawAce)
 }
 
-#[derive(Serialize,Debug)]
+#[derive(Serialize,Debug,Clone)]
 pub struct AceBasic {
     pub access_rights: u32,
     pub sid: Sid
@@ -467,7 +468,7 @@ impl AceBasic {
     }
 }
 
-#[derive(Serialize,Debug)]
+#[derive(Serialize,Debug,Clone)]
 pub struct AceObject {
     pub access_rights: u32,
     pub flags: u32,
@@ -495,6 +496,7 @@ impl AceObject {
     }
 }
 
+#[derive(Clone)]
 pub struct RawAce(pub Vec<u8>);
 impl fmt::Debug for RawAce {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -517,7 +519,7 @@ impl ser::Serialize for RawAce {
 
 // SID
 // https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-identifier
-#[derive(Debug)]
+#[derive(Debug,Clone)]
  pub struct Sid {
      revision_number: u8,
      sub_authority_count: u8,
@@ -565,7 +567,7 @@ impl ser::Serialize for RawAce {
      }
  }
 
-#[derive(Serialize,Debug)]
+#[derive(Serialize,Debug,Clone)]
 pub struct Authority(u64);
 impl Authority {
     pub fn new<R: Read>(mut reader: R) -> Result<Authority,SecDescError> {
@@ -588,7 +590,7 @@ impl fmt::Display for Authority {
     }
 }
 
-#[derive(Serialize,Debug)]
+#[derive(Serialize,Debug,Clone)]
 pub struct SubAuthorityList(Vec<SubAuthority>);
 impl SubAuthorityList {
     pub fn new<R: Read>(mut reader: R, count: u8) -> Result<SubAuthorityList,SecDescError> {
