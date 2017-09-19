@@ -8,6 +8,21 @@ use std::io::Read;
 use std::io::{Seek,SeekFrom};
 use std::io::Cursor;
 
+pub fn check_acl(acl_option: &Option<Acl>)->bool{
+    match *acl_option {
+        Some(ref acl) => {
+            if acl.count > 0 {
+                false
+            } else {
+                true
+            }
+        },
+        None => {
+            true
+        }
+    }
+}
+
 #[derive(Debug,Clone)]
 pub enum SdErrorKind {
     IoError,
@@ -32,10 +47,13 @@ impl From<io::Error> for SecDescError {
 
 #[derive(Serialize,Debug,Clone)]
 pub struct SecurityDescriptor {
+    #[serde(skip_serializing)]
     pub header: SecDescHeader,
     pub owner_sid: Sid,
     pub group_sid: Sid,
+    #[serde(skip_serializing_if = "check_acl")]
     pub dacl: Option<Acl>,
+    #[serde(skip_serializing_if = "check_acl")]
     pub sacl: Option<Acl>
 }
 impl SecurityDescriptor {
@@ -123,11 +141,16 @@ impl ser::Serialize for SdControlFlags {
 #[derive(Serialize,Debug,Clone)]
 pub struct SecDescHeader {
     pub revision_number: u8,
+    #[serde(skip_serializing)]
     pub padding1: u8,
     pub control_flags: SdControlFlags,
+    #[serde(skip_serializing)]
     pub owner_sid_offset: u32,
+    #[serde(skip_serializing)]
     pub group_sid_offset: u32,
+    #[serde(skip_serializing)]
     pub dacl_offset: u32,
+    #[serde(skip_serializing)]
     pub sacl_offset: u32
 }
 impl SecDescHeader {
@@ -334,9 +357,12 @@ impl ser::Serialize for FolderAccessFlags {
 #[derive(Serialize,Debug,Clone)]
 pub struct Acl {
     pub revision: u8,
+    #[serde(skip_serializing)]
     pub padding1: u8,
+    #[serde(skip_serializing)]
     pub size: u16,
     pub count: u16,
+    #[serde(skip_serializing)]
     pub padding2: u16,
     pub entries: Vec<Ace>
 }
@@ -371,6 +397,7 @@ impl Acl{
 pub struct Ace {
     pub ace_type: AceType,
     pub ace_flags: AceFlags,
+    #[serde(skip_serializing)]
     pub size: u16,
     pub data: AceData
 }
