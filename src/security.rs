@@ -1,4 +1,4 @@
-use byteorder::{ReadBytesExt, LittleEndian, BigEndian};
+use byteorder::{ReadBytesExt, ByteOrder, LittleEndian, BigEndian};
 use serde::{ser};
 use guid::{Guid};
 use utils;
@@ -59,7 +59,14 @@ pub struct SecurityDescriptor {
 impl SecurityDescriptor {
     pub fn new<Rs: Read+Seek>(mut reader: Rs) -> Result<SecurityDescriptor,SecDescError> {
         let _offset = reader.seek(SeekFrom::Current(0))?;
-        let header = SecDescHeader::new(&mut reader)?;
+
+        let mut header_buff = [0; 20];
+        reader.read_exact(&mut header_buff)?;
+
+        let header = SecDescHeader::new(
+            &header_buff
+        )?;
+
         debug!("{} {:?}",_offset,header);
 
         reader.seek(
@@ -149,26 +156,26 @@ pub struct SecDescHeader {
     #[serde(skip_serializing)]
     pub group_sid_offset: u32,
     #[serde(skip_serializing)]
-    pub dacl_offset: u32,
+    pub sacl_offset: u32,
     #[serde(skip_serializing)]
-    pub sacl_offset: u32
+    pub dacl_offset: u32
 }
 impl SecDescHeader {
-    pub fn new<R: Read>(mut reader: R) -> Result<SecDescHeader,SecDescError> {
-        let revision_number = reader.read_u8()?;
-        let padding1 = reader.read_u8()?;
+    pub fn new(buffer: &[u8]) -> Result<SecDescHeader,SecDescError> {
+        let revision_number = buffer[0];
+        let padding1 = buffer[1];
         let control_flags = SdControlFlags::from_bits_truncate(
-            reader.read_u16::<LittleEndian>()?
+            LittleEndian::read_u16(&buffer[2..4])
         );
-        let owner_sid_offset = reader.read_u32::<LittleEndian>()?;
-        let group_sid_offset = reader.read_u32::<LittleEndian>()?;
+        let owner_sid_offset = LittleEndian::read_u32(&buffer[4..8]);
+        let group_sid_offset = LittleEndian::read_u32(&buffer[8..12]);
 
         // Does sacl offset or dacl offset come first??
         // logicly and Zimmerman's 010 Template show dacl come first
         // but libyal and msdn documentation show dacl comes first
         // https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-descriptor-header
-        let sacl_offset = reader.read_u32::<LittleEndian>()?;
-        let dacl_offset = reader.read_u32::<LittleEndian>()?;
+        let sacl_offset = LittleEndian::read_u32(&buffer[12..16]);
+        let dacl_offset = LittleEndian::read_u32(&buffer[16..20]);
 
         Ok(
             SecDescHeader {
@@ -177,11 +184,31 @@ impl SecDescHeader {
                 control_flags: control_flags,
                 owner_sid_offset: owner_sid_offset,
                 group_sid_offset: group_sid_offset,
-                dacl_offset: dacl_offset,
-                sacl_offset: sacl_offset
+                sacl_offset: sacl_offset,
+                dacl_offset: dacl_offset
             }
         )
     }
+}
+#[test]
+fn sec_desc_header() {
+    let buffer: &[u8] = &[
+        0x01,0x00,0x04,0x98,0x98,0x00,0x00,0x00,0xA4,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+        0x14,0x00,0x00,0x00,0x02,0x00
+    ];
+
+    let header = match SecDescHeader::new(&buffer) {
+        Ok(header) => header,
+        Err(error) => panic!(error)
+    };
+
+    assert_eq!(header.revision_number,1);
+    assert_eq!(header.padding1,0);
+    //assert_eq!(header.control_flags.bits(),38916);
+    assert_eq!(header.owner_sid_offset,152);
+    assert_eq!(header.group_sid_offset,164);
+    assert_eq!(header.sacl_offset,0);
+    assert_eq!(header.dacl_offset,20);
 }
 
 // ACE
