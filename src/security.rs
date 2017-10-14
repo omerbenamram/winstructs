@@ -664,7 +664,9 @@ impl SubAuthorityList {
         let mut list: Vec<SubAuthority> = Vec::new();
 
         for i in 0..count {
-            let sub = SubAuthority::new(&mut reader)?;
+            let mut buf_sa = [0;4];
+            reader.read_exact(&mut buf_sa)?;
+            let sub = SubAuthority::new(&buf_sa)?;
             list.push(sub);
         }
 
@@ -685,11 +687,11 @@ impl SubAuthorityList {
 #[derive(Serialize,Debug,Clone)]
 pub struct SubAuthority(u32);
 impl SubAuthority {
-    pub fn new<R: Read>(mut reader: R) -> Result<SubAuthority,SecDescError> {
-        let value = reader.read_u32::<LittleEndian>()?;
-
+    pub fn new(buffer: &[u8]) -> Result<SubAuthority,SecDescError> {
         Ok(
-            SubAuthority(value)
+            SubAuthority(
+                LittleEndian::read_u32(&buffer[0..4])
+            )
         )
     }
 
@@ -701,6 +703,19 @@ impl fmt::Display for SubAuthority {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,"{}",self.0)
     }
+}
+#[test]
+fn sub_authority() {
+    let buffer: &[u8] = &[
+        0x12,0x00,0x00,0x00
+    ];
+
+    let sub_authority = match SubAuthority::new(&buffer) {
+        Ok(sub_authority) => sub_authority,
+        Err(error) => panic!(error)
+    };
+
+    assert_eq!(sub_authority.0,18);
 }
 
 #[test]
