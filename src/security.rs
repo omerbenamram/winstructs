@@ -66,9 +66,6 @@ impl SecurityDescriptor {
         let header = SecDescHeader::new(
             &header_buff
         )?;
-
-        debug!("{} {:?}",_offset,header);
-
         reader.seek(
             SeekFrom::Start(_offset + header.owner_sid_offset as u64)
         )?;
@@ -584,7 +581,12 @@ impl ser::Serialize for RawAce {
      pub fn new<R: Read>(mut reader: R) -> Result<Sid,SecDescError> {
          let revision_number = reader.read_u8()?;
          let sub_authority_count = reader.read_u8()?;
-         let authority = Authority::new(&mut reader)?;
+
+         let mut buf_authority = [0;6];
+         reader.read_exact(&mut buf_authority)?;
+         let authority = Authority::new(
+             &buf_authority
+         )?;
 
          let sub_authorities = SubAuthorityList::new(
              &mut reader,
@@ -624,14 +626,11 @@ impl ser::Serialize for RawAce {
 #[derive(Serialize,Debug,Clone)]
 pub struct Authority(u64);
 impl Authority {
-    pub fn new<R: Read>(mut reader: R) -> Result<Authority,SecDescError> {
-        let mut buffer = vec![0;6];
-        reader.read_exact(buffer.as_mut_slice())?;
-        // Add last two bytes
-        buffer.insert(0,0);
-        buffer.insert(0,0);
-
-        let value = Cursor::new(buffer).read_u64::<BigEndian>()?;
+    pub fn new(buffer: &[u8]) -> Result<Authority,SecDescError> {
+        let value = BigEndian::read_u64(&[
+            &[0x00,0x00],
+            &buffer[0..6]
+        ].concat());
 
         Ok(
             Authority(value)
@@ -643,6 +642,20 @@ impl fmt::Display for Authority {
         write!(f,"{}",self.0)
     }
 }
+#[test]
+fn authority() {
+    let buffer: &[u8] = &[
+        0x00,0x00,0x00,0x00,0x00,0x05
+    ];
+
+    let authority = match Authority::new(&buffer) {
+        Ok(authority) => authority,
+        Err(error) => panic!(error)
+    };
+
+    assert_eq!(authority.0,5);
+}
+
 
 #[derive(Serialize,Debug,Clone)]
 pub struct SubAuthorityList(Vec<SubAuthority>);
