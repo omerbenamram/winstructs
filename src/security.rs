@@ -582,14 +582,16 @@ impl ser::Serialize for RawAce {
          let revision_number = reader.read_u8()?;
          let sub_authority_count = reader.read_u8()?;
 
-         let mut buf_authority = [0;6];
-         reader.read_exact(&mut buf_authority)?;
+         let mut buf_a = [0;6];
+         reader.read_exact(&mut buf_a)?;
          let authority = Authority::new(
-             &buf_authority
+             &buf_a
          )?;
 
+         let mut buf_sa = vec![0;(sub_authority_count*4) as usize];
+         reader.read_exact(&mut buf_sa)?;
          let sub_authorities = SubAuthorityList::new(
-             &mut reader,
+             &buf_sa.as_slice(),
              sub_authority_count
          )?;
 
@@ -660,13 +662,15 @@ fn authority() {
 #[derive(Serialize,Debug,Clone)]
 pub struct SubAuthorityList(Vec<SubAuthority>);
 impl SubAuthorityList {
-    pub fn new<R: Read>(mut reader: R, count: u8) -> Result<SubAuthorityList,SecDescError> {
+    pub fn new(buffer: &[u8], count: u8) -> Result<SubAuthorityList,SecDescError> {
         let mut list: Vec<SubAuthority> = Vec::new();
 
         for i in 0..count {
-            let mut buf_sa = [0;4];
-            reader.read_exact(&mut buf_sa)?;
-            let sub = SubAuthority::new(&buf_sa)?;
+            //SubAuthority offset
+            let o: usize = (i*4) as usize;
+            let sub = SubAuthority::new(
+                &buffer[o..o+4]
+            )?;
             list.push(sub);
         }
 
@@ -682,6 +686,21 @@ impl SubAuthorityList {
         }
         format!("{}",s_vec.join("-"))
     }
+}
+
+#[test]
+fn sub_authority_list() {
+    let buffer: &[u8] = &[
+        0x12,0x00,0x00,0x00, 0x00,0x13,0x18,0x00, 0x3F,0x00,0x0F,0x00
+    ];
+
+    let sub_authority = match SubAuthorityList::new(&buffer,3) {
+        Ok(sub_authority) => sub_authority,
+        Err(error) => panic!(error)
+    };
+    assert_eq!(sub_authority.0[0].0,18);
+    assert_eq!(sub_authority.0[1].0,1577728);
+    assert_eq!(sub_authority.0[2].0,983103);
 }
 
 #[derive(Serialize,Debug,Clone)]
