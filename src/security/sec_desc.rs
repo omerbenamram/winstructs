@@ -1,31 +1,13 @@
 use crate::security::acl::Acl;
 use crate::security::sid::Sid;
 use crate::ReadSeek;
-use serde::ser;
+use bitflags::bitflags;
+use byteorder::{LittleEndian, ReadBytesExt};
+use log::debug;
+use serde::{ser, Serialize};
+use std::error::Error;
 use std::fmt;
-use std::io::{self, SeekFrom};
-
-#[derive(Debug, Clone)]
-pub enum SdErrorKind {
-    IoError,
-    ValidationError,
-}
-
-#[derive(Debug, Clone)]
-pub struct SecDescError {
-    pub message: String,
-    pub kind: SdErrorKind,
-    pub trace: String,
-}
-impl From<io::Error> for SecDescError {
-    fn from(err: io::Error) -> Self {
-        SecDescError {
-            message: format!("{}", err),
-            kind: SdErrorKind::IoError,
-            trace: String::new(),
-        }
-    }
-}
+use std::io::{self, Cursor, SeekFrom};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SecurityDescriptor {
@@ -38,24 +20,24 @@ pub struct SecurityDescriptor {
 }
 
 impl SecurityDescriptor {
-    pub fn new<R: ReadSeek>(mut read_seek: R) -> Result<SecurityDescriptor, SecDescError> {
-        let _offset = read_seek.tell();
+    pub fn from_stream<S: ReadSeek>(mut stream: S) -> Result<SecurityDescriptor, Box<dyn Error>> {
+        let _offset = stream.tell()?;
 
-        let mut header_buff = [0; 20];
-        read_seek.read_exact(&mut header_buff)?;
+        let mut header_buf = [0; 20];
+        stream.read_exact(&mut header_buf)?;
 
-        let header = SecDescHeader::new(&header_buff)?;
-        read_seek.seek(SeekFrom::Start(_offset + header.owner_sid_offset as u64))?;
-        let owner_sid = Sid::new(&mut read_seek)?;
+        let header = SecDescHeader::from_buffer(&header_buf)?;
+        stream.seek(SeekFrom::Start(_offset + header.owner_sid_offset as u64))?;
+        let owner_sid = Sid::new(&mut stream)?;
 
-        read_seek.seek(SeekFrom::Start(_offset + header.group_sid_offset as u64))?;
-        let group_sid = Sid::new(&mut read_seek)?;
+        stream.seek(SeekFrom::Start(_offset + header.group_sid_offset as u64))?;
+        let group_sid = Sid::new(&mut stream)?;
 
         let dacl = match header.dacl_offset > 0 {
             true => {
                 debug!("dacl at offset: {}", _offset + header.dacl_offset as u64);
-                read_seek.seek(SeekFrom::Start(_offset + header.dacl_offset as u64))?;
-                Some(Acl::new(&mut read_seek)?)
+                stream.seek(SeekFrom::Start(_offset + header.dacl_offset as u64))?;
+                Some(Acl::new(&mut stream)?)
             }
             false => None,
         };
@@ -63,8 +45,8 @@ impl SecurityDescriptor {
         let sacl = match header.sacl_offset > 0 {
             true => {
                 debug!("sacl at offset: {}", _offset + header.sacl_offset as u64);
-                read_seek.seek(SeekFrom::Start(_offset + header.sacl_offset as u64))?;
-                Some(Acl::new(&mut read_seek)?)
+                stream.seek(SeekFrom::Start(_offset + header.sacl_offset as u64))?;
+                Some(Acl::new(&mut stream)?)
             }
             false => None,
         };
@@ -129,21 +111,24 @@ pub struct SecDescHeader {
     #[serde(skip_serializing)]
     pub dacl_offset: u32,
 }
+
 impl SecDescHeader {
-    pub fn new(buffer: &[u8]) -> Result<SecDescHeader, SecDescError> {
-        let revision_number = buffer[0];
-        let padding1 = buffer[1];
-        let control_flags =
-            SdControlFlags::from_bits_truncate(LittleEndian::read_u16(&buffer[2..4]));
-        let owner_sid_offset = LittleEndian::read_u32(&buffer[4..8]);
-        let group_sid_offset = LittleEndian::read_u32(&buffer[8..12]);
+    pub fn from_buffer(buffer: &[u8]) -> Result<SecDescHeader, Box<dyn Error>> {
+        let mut cursor = Cursor::new(buffer);
+
+        let revision_number = cursor.read_u8()?;
+        let padding1 = cursor.read_u8()?;
+        let control_flags_bytes = cursor.read_u16::<LittleEndian>()?;
+        let control_flags = SdControlFlags::from_bits_truncate(control_flags_bytes);
+        let owner_sid_offset = cursor.read_u32::<LittleEndian>()?;
+        let group_sid_offset = cursor.read_u32::<LittleEndian>()?;
 
         // Does sacl offset or dacl offset come first??
         // logicly and Zimmerman's 010 Template show dacl come first
         // but libyal and msdn documentation show dacl comes first
         // https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-descriptor-header
-        let sacl_offset = LittleEndian::read_u32(&buffer[12..16]);
-        let dacl_offset = LittleEndian::read_u32(&buffer[16..20]);
+        let sacl_offset = cursor.read_u32::<LittleEndian>()?;
+        let dacl_offset = cursor.read_u32::<LittleEndian>()?;
 
         Ok(SecDescHeader {
             revision_number,
@@ -156,23 +141,26 @@ impl SecDescHeader {
         })
     }
 }
-#[test]
-fn sec_desc_header() {
-    let buffer: &[u8] = &[
-        0x01, 0x00, 0x04, 0x98, 0x98, 0x00, 0x00, 0x00, 0xA4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x14, 0x00, 0x00, 0x00, 0x02, 0x00,
-    ];
 
-    let header = match SecDescHeader::new(&buffer) {
-        Ok(header) => header,
-        Err(error) => panic!(error),
-    };
+#[cfg(test)]
+mod tests {
+    use crate::security::sec_desc::SecDescHeader;
 
-    assert_eq!(header.revision_number, 1);
-    assert_eq!(header.padding1, 0);
-    //assert_eq!(header.control_flags.bits(),38916);
-    assert_eq!(header.owner_sid_offset, 152);
-    assert_eq!(header.group_sid_offset, 164);
-    assert_eq!(header.sacl_offset, 0);
-    assert_eq!(header.dacl_offset, 20);
+    #[test]
+    fn test_parses_sec_desc_header() {
+        let buffer: &[u8] = &[
+            0x01, 0x00, 0x04, 0x98, 0x98, 0x00, 0x00, 0x00, 0xA4, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x02, 0x00,
+        ];
+
+        let header = SecDescHeader::from_buffer(&buffer).unwrap();
+
+        assert_eq!(header.revision_number, 1);
+        assert_eq!(header.padding1, 0);
+        //assert_eq!(header.control_flags.bits(),38916);
+        assert_eq!(header.owner_sid_offset, 152);
+        assert_eq!(header.group_sid_offset, 164);
+        assert_eq!(header.sacl_offset, 0);
+        assert_eq!(header.dacl_offset, 20);
+    }
 }

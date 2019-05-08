@@ -1,4 +1,4 @@
-use rwinstructs::timestamp;
+use winstructs::timestamp;
 use serde_json;
 
 fn example_001() {

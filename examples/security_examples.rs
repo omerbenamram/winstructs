@@ -1,6 +1,6 @@
-use rwinstructs::security;
-use std::io::Cursor;
 use env_logger;
+use std::io::Cursor;
+use winstructs::security::{Ace, Acl, SecurityDescriptor, Sid};
 
 fn ace_example_01() {
     let buffer: &[u8] = &[
@@ -9,10 +9,7 @@ fn ace_example_01() {
         0x5B, 0x68, 0xE9, 0x03, 0x00, 0x00,
     ];
 
-    let ace = match security::Ace::new(Cursor::new(buffer)) {
-        Ok(ace) => ace,
-        Err(error) => panic!(format!("{:#?}", error)),
-    };
+    let ace = Ace::new(Cursor::new(buffer)).unwrap();
 
     println!("{:#?}", ace);
     println!("{}", serde_json::to_string(&ace).unwrap());
@@ -30,11 +27,7 @@ fn acl_example_01() {
         0x00, 0x00, 0x00,
     ];
 
-    let acl = match security::Acl::new(Cursor::new(buffer)) {
-        Ok(acl) => acl,
-        Err(error) => panic!(error),
-    };
-
+    let acl = Acl::new(Cursor::new(buffer)).unwrap();
     println!("{:#?}", acl);
     println!("{}", serde_json::to_string(&acl).unwrap());
 }
@@ -44,10 +37,7 @@ fn sid_example_01() {
         0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x12, 0x00, 0x00, 0x00,
     ];
 
-    let sid = match security::Sid::new(Cursor::new(buffer)) {
-        Ok(sid) => sid,
-        Err(error) => panic!(error),
-    };
+    let sid = Sid::new(Cursor::new(buffer)).unwrap();
 
     println!("{:#?}", sid);
     println!("{}", sid);
@@ -70,10 +60,7 @@ fn security_descriptor_01() {
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x12, 0x00, 0x00, 0x00,
     ];
 
-    let sd = match security::SecurityDescriptor::new(Cursor::new(buffer)) {
-        Ok(sd) => sd,
-        Err(error) => panic!(error),
-    };
+    let sd = SecurityDescriptor::from_stream(Cursor::new(buffer)).unwrap();
 
     println!("{:#?}", sd);
     println!("{}", serde_json::to_string(&sd).unwrap());

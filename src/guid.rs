@@ -1,4 +1,5 @@
 use byteorder::{LittleEndian, ReadBytesExt};
+use serde::ser;
 use std::fmt::Write;
 use std::fmt::{self, Debug, Display};
 use std::io::{self, Read};
@@ -55,6 +56,15 @@ impl Guid {
         .expect("writing to a preallocated buffer cannot fail");
 
         s
+    }
+}
+
+impl ser::Serialize for Guid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.to_string()))
     }
 }
 

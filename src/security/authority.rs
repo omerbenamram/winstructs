@@ -1,12 +1,13 @@
-use crate::security::sec_desc::SecDescError;
+use byteorder::{BigEndian, ByteOrder, LittleEndian};
+use serde::Serialize;
+use std::error::Error;
 use std::fmt;
-use std::slice::SliceConcatExt;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Authority(u64);
 
 impl Authority {
-    pub fn new(buffer: &[u8]) -> Result<Authority, SecDescError> {
+    pub fn new(buffer: &[u8]) -> Result<Authority, Box<dyn Error>> {
         let value = BigEndian::read_u64(&[&[0x00, 0x00], &buffer[0..6]].concat());
 
         Ok(Authority(value))
@@ -22,7 +23,7 @@ impl fmt::Display for Authority {
 #[derive(Serialize, Debug, Clone)]
 pub struct SubAuthorityList(Vec<SubAuthority>);
 impl SubAuthorityList {
-    pub fn new(buffer: &[u8], count: u8) -> Result<SubAuthorityList, SecDescError> {
+    pub fn new(buffer: &[u8], count: u8) -> Result<SubAuthorityList, Box<dyn Error>> {
         let mut list: Vec<SubAuthority> = Vec::new();
 
         for i in 0..count {
@@ -44,26 +45,11 @@ impl SubAuthorityList {
     }
 }
 
-#[test]
-fn sub_authority_list() {
-    let buffer: &[u8] = &[
-        0x12, 0x00, 0x00, 0x00, 0x00, 0x13, 0x18, 0x00, 0x3F, 0x00, 0x0F, 0x00,
-    ];
-
-    let sub_authority = match SubAuthorityList::new(&buffer, 3) {
-        Ok(sub_authority) => sub_authority,
-        Err(error) => panic!(error),
-    };
-    assert_eq!(sub_authority.0[0].0, 18);
-    assert_eq!(sub_authority.0[1].0, 1577728);
-    assert_eq!(sub_authority.0[2].0, 983103);
-}
-
 #[derive(Serialize, Debug, Clone)]
 pub struct SubAuthority(u32);
 
 impl SubAuthority {
-    pub fn new(buffer: &[u8]) -> Result<SubAuthority, SecDescError> {
+    pub fn new(buffer: &[u8]) -> Result<SubAuthority, Box<dyn Error>> {
         Ok(SubAuthority(LittleEndian::read_u32(&buffer[0..4])))
     }
 
@@ -80,7 +66,7 @@ impl fmt::Display for SubAuthority {
 
 #[cfg(test)]
 mod tests {
-    use crate::security::authority::{Authority, SubAuthority};
+    use crate::security::authority::{Authority, SubAuthority, SubAuthorityList};
 
     #[test]
     fn test_parse_authority() {
@@ -96,6 +82,19 @@ mod tests {
 
         let sub_authority = SubAuthority::new(&buffer).unwrap();
         assert_eq!(sub_authority.0, 18);
+    }
+
+    #[test]
+    fn test_parses_sub_authority_list() {
+        let buffer: &[u8] = &[
+            0x12, 0x00, 0x00, 0x00, 0x00, 0x13, 0x18, 0x00, 0x3F, 0x00, 0x0F, 0x00,
+        ];
+
+        let sub_authority = SubAuthorityList::new(&buffer, 3).unwrap();
+
+        assert_eq!(sub_authority.0[0].0, 18);
+        assert_eq!(sub_authority.0[1].0, 1_577_728);
+        assert_eq!(sub_authority.0[2].0, 983_103);
     }
 
 }
