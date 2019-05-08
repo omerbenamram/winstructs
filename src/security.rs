@@ -1,14 +1,16 @@
-use byteorder::{ReadBytesExt, ByteOrder, LittleEndian, BigEndian};
-use serde::{ser};
-use guid::{Guid};
-use utils;
-use std::fmt;
-use std::io;
-use std::io::Read;
-use std::io::{Seek,SeekFrom};
-use std::io::Cursor;
+use crate::guid::Guid;
+use crate::utils;
+use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
+use serde::{ser, Serialize};
 
-pub fn check_acl(acl_option: &Option<Acl>)->bool{
+use std::{
+    fmt, io,
+    io::Cursor,
+    io::Read,
+    io::{Seek, SeekFrom},
+};
+
+pub fn check_acl(acl_option: &Option<Acl>) -> bool {
     match *acl_option {
         Some(ref acl) => {
             if acl.count > 0 {
@@ -16,36 +18,34 @@ pub fn check_acl(acl_option: &Option<Acl>)->bool{
             } else {
                 true
             }
-        },
-        None => {
-            true
         }
+        None => true,
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum SdErrorKind {
     IoError,
-    ValidationError
+    ValidationError,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct SecDescError {
     pub message: String,
     pub kind: SdErrorKind,
-    pub trace: String
+    pub trace: String,
 }
 impl From<io::Error> for SecDescError {
     fn from(err: io::Error) -> Self {
         SecDescError {
-            message: format!("{}",err),
+            message: format!("{}", err),
             kind: SdErrorKind::IoError,
-            trace: backtrace!()
+            trace: backtrace!(),
         }
     }
 }
 
-#[derive(Serialize,Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct SecurityDescriptor {
     #[serde(skip_serializing)]
     pub header: SecDescHeader,
@@ -54,59 +54,47 @@ pub struct SecurityDescriptor {
     #[serde(skip_serializing_if = "check_acl")]
     pub dacl: Option<Acl>,
     #[serde(skip_serializing_if = "check_acl")]
-    pub sacl: Option<Acl>
+    pub sacl: Option<Acl>,
 }
 impl SecurityDescriptor {
-    pub fn new<Rs: Read+Seek>(mut reader: Rs) -> Result<SecurityDescriptor,SecDescError> {
+    pub fn new<Rs: Read + Seek>(mut reader: Rs) -> Result<SecurityDescriptor, SecDescError> {
         let _offset = reader.seek(SeekFrom::Current(0))?;
 
         let mut header_buff = [0; 20];
         reader.read_exact(&mut header_buff)?;
 
-        let header = SecDescHeader::new(
-            &header_buff
-        )?;
-        reader.seek(
-            SeekFrom::Start(_offset + header.owner_sid_offset as u64)
-        )?;
+        let header = SecDescHeader::new(&header_buff)?;
+        reader.seek(SeekFrom::Start(_offset + header.owner_sid_offset as u64))?;
         let owner_sid = Sid::new(&mut reader)?;
 
-        reader.seek(
-            SeekFrom::Start(_offset + header.group_sid_offset as u64)
-        )?;
+        reader.seek(SeekFrom::Start(_offset + header.group_sid_offset as u64))?;
         let group_sid = Sid::new(&mut reader)?;
 
         let dacl = match header.dacl_offset > 0 {
             true => {
-                debug!("dacl at offset: {}",_offset + header.dacl_offset as u64);
-                reader.seek(
-                    SeekFrom::Start(_offset + header.dacl_offset as u64)
-                )?;
+                debug!("dacl at offset: {}", _offset + header.dacl_offset as u64);
+                reader.seek(SeekFrom::Start(_offset + header.dacl_offset as u64))?;
                 Some(Acl::new(&mut reader)?)
-            },
-            false => None
+            }
+            false => None,
         };
 
         let sacl = match header.sacl_offset > 0 {
             true => {
-                debug!("sacl at offset: {}",_offset + header.sacl_offset as u64);
-                reader.seek(
-                    SeekFrom::Start(_offset + header.sacl_offset as u64)
-                )?;
+                debug!("sacl at offset: {}", _offset + header.sacl_offset as u64);
+                reader.seek(SeekFrom::Start(_offset + header.sacl_offset as u64))?;
                 Some(Acl::new(&mut reader)?)
-            },
-            false => None
+            }
+            false => None,
         };
 
-        Ok(
-            SecurityDescriptor {
-                header: header,
-                owner_sid: owner_sid,
-                group_sid: group_sid,
-                dacl: dacl,
-                sacl: sacl
-            }
-        )
+        Ok(SecurityDescriptor {
+            header: header,
+            owner_sid: owner_sid,
+            group_sid: group_sid,
+            dacl: dacl,
+            sacl: sacl,
+        })
     }
 }
 
@@ -129,20 +117,23 @@ bitflags! {
         const SE_SELF_RELATIVE               = 0x8000;
     }
 }
+
 impl fmt::Display for SdControlFlags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.bits())
+        write!(f, "{}", self.bits())
     }
 }
+
 impl ser::Serialize for SdControlFlags {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
 }
 
-#[derive(Serialize,Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct SecDescHeader {
     pub revision_number: u8,
     #[serde(skip_serializing)]
@@ -155,15 +146,14 @@ pub struct SecDescHeader {
     #[serde(skip_serializing)]
     pub sacl_offset: u32,
     #[serde(skip_serializing)]
-    pub dacl_offset: u32
+    pub dacl_offset: u32,
 }
 impl SecDescHeader {
-    pub fn new(buffer: &[u8]) -> Result<SecDescHeader,SecDescError> {
+    pub fn new(buffer: &[u8]) -> Result<SecDescHeader, SecDescError> {
         let revision_number = buffer[0];
         let padding1 = buffer[1];
-        let control_flags = SdControlFlags::from_bits_truncate(
-            LittleEndian::read_u16(&buffer[2..4])
-        );
+        let control_flags =
+            SdControlFlags::from_bits_truncate(LittleEndian::read_u16(&buffer[2..4]));
         let owner_sid_offset = LittleEndian::read_u32(&buffer[4..8]);
         let group_sid_offset = LittleEndian::read_u32(&buffer[8..12]);
 
@@ -174,38 +164,36 @@ impl SecDescHeader {
         let sacl_offset = LittleEndian::read_u32(&buffer[12..16]);
         let dacl_offset = LittleEndian::read_u32(&buffer[16..20]);
 
-        Ok(
-            SecDescHeader {
-                revision_number: revision_number,
-                padding1: padding1,
-                control_flags: control_flags,
-                owner_sid_offset: owner_sid_offset,
-                group_sid_offset: group_sid_offset,
-                sacl_offset: sacl_offset,
-                dacl_offset: dacl_offset
-            }
-        )
+        Ok(SecDescHeader {
+            revision_number: revision_number,
+            padding1: padding1,
+            control_flags: control_flags,
+            owner_sid_offset: owner_sid_offset,
+            group_sid_offset: group_sid_offset,
+            sacl_offset: sacl_offset,
+            dacl_offset: dacl_offset,
+        })
     }
 }
 #[test]
 fn sec_desc_header() {
     let buffer: &[u8] = &[
-        0x01,0x00,0x04,0x98,0x98,0x00,0x00,0x00,0xA4,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-        0x14,0x00,0x00,0x00,0x02,0x00
+        0x01, 0x00, 0x04, 0x98, 0x98, 0x00, 0x00, 0x00, 0xA4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x14, 0x00, 0x00, 0x00, 0x02, 0x00,
     ];
 
     let header = match SecDescHeader::new(&buffer) {
         Ok(header) => header,
-        Err(error) => panic!(error)
+        Err(error) => panic!(error),
     };
 
-    assert_eq!(header.revision_number,1);
-    assert_eq!(header.padding1,0);
+    assert_eq!(header.revision_number, 1);
+    assert_eq!(header.padding1, 0);
     //assert_eq!(header.control_flags.bits(),38916);
-    assert_eq!(header.owner_sid_offset,152);
-    assert_eq!(header.group_sid_offset,164);
-    assert_eq!(header.sacl_offset,0);
-    assert_eq!(header.dacl_offset,20);
+    assert_eq!(header.owner_sid_offset, 152);
+    assert_eq!(header.group_sid_offset, 164);
+    assert_eq!(header.sacl_offset, 0);
+    assert_eq!(header.dacl_offset, 20);
 }
 
 // ACE
@@ -233,7 +221,7 @@ const SYSTEM_MANDATORY_LABEL_ACE_TYPE: u8 = 0x11;
 #[derive(Clone)]
 pub struct AceType(pub u8);
 impl AceType {
-    pub fn as_string(&self)->String{
+    pub fn as_string(&self) -> String {
         match self.0 {
             0x00 => "ACCESS_ALLOWED".to_string(),
             0x01 => "ACCESS_DENIED".to_string(),
@@ -251,26 +239,27 @@ impl AceType {
             0x0f => "SYSTEM_AUDIT_CALLBACK_OBJECT".to_string(),
             0x10 => "SYSTEM_ALARM_CALLBACK_OBJECT".to_string(),
             0x11 => "SYSTEM_MANDATORY_LABEL".to_string(),
-            _ => format!("UNHANDLED_TYPE: 0x{:02X}",self.0)
+            _ => format!("UNHANDLED_TYPE: 0x{:02X}", self.0),
         }
     }
-    pub fn as_u8(&self)->u8{
+    pub fn as_u8(&self) -> u8 {
         self.0
     }
 }
 impl fmt::Display for AceType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.as_string())
+        write!(f, "{}", self.as_string())
     }
 }
 impl fmt::Debug for AceType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.as_string())
+        write!(f, "{}", self.as_string())
     }
 }
 impl ser::Serialize for AceType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
         serializer.serialize_str(&self.as_string())
     }
@@ -286,12 +275,13 @@ bitflags! {
 }
 impl fmt::Display for AceFlags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.bits())
+        write!(f, "{}", self.bits())
     }
 }
 impl ser::Serialize for AceFlags {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
@@ -308,12 +298,13 @@ bitflags! {
 }
 impl fmt::Display for StandardAccessFlags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.bits())
+        write!(f, "{}", self.bits())
     }
 }
 impl ser::Serialize for StandardAccessFlags {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
@@ -336,12 +327,13 @@ bitflags! {
 }
 impl fmt::Display for NonFolderAccessFlags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.bits())
+        write!(f, "{}", self.bits())
     }
 }
 impl ser::Serialize for NonFolderAccessFlags {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
@@ -365,12 +357,13 @@ bitflags! {
 }
 impl fmt::Display for FolderAccessFlags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.bits())
+        write!(f, "{}", self.bits())
     }
 }
 impl ser::Serialize for FolderAccessFlags {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
         serializer.serialize_str(&format!("{:?}", self))
     }
@@ -378,7 +371,7 @@ impl ser::Serialize for FolderAccessFlags {
 
 // ACL
 // https://github.com/libyal/libfwnt/wiki/Security-Descriptor#access-control-list-acl
-#[derive(Serialize,Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Acl {
     pub revision: u8,
     #[serde(skip_serializing)]
@@ -388,10 +381,10 @@ pub struct Acl {
     pub count: u16,
     #[serde(skip_serializing)]
     pub padding2: u16,
-    pub entries: Vec<Ace>
+    pub entries: Vec<Ace>,
 }
-impl Acl{
-    pub fn new<R: Read>(mut reader: R) -> Result<Acl,SecDescError> {
+impl Acl {
+    pub fn new<R: Read>(mut reader: R) -> Result<Acl, SecDescError> {
         let revision = reader.read_u8()?;
         let padding1 = reader.read_u8()?;
         let size = reader.read_u16::<LittleEndian>()?;
@@ -399,96 +392,75 @@ impl Acl{
         let padding2 = reader.read_u16::<LittleEndian>()?;
         let mut entries: Vec<Ace> = Vec::new();
 
-        for i in 0..count {
+        for _i in 0..count {
             let ace = Ace::new(&mut reader)?;
             entries.push(ace);
         }
 
-        Ok(
-            Acl {
-                revision: revision,
-                padding1: padding1,
-                size: size,
-                count: count,
-                padding2: padding2,
-                entries: entries
-            }
-        )
+        Ok(Acl {
+            revision: revision,
+            padding1: padding1,
+            size: size,
+            count: count,
+            padding2: padding2,
+            entries: entries,
+        })
     }
 }
 
-#[derive(Serialize,Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Ace {
     pub ace_type: AceType,
     pub ace_flags: AceFlags,
     #[serde(skip_serializing)]
     pub size: u16,
-    pub data: AceData
+    pub data: AceData,
 }
+
 impl Ace {
-    pub fn new<R: Read>(mut reader: R) -> Result<Ace,SecDescError> {
+    pub fn new<R: Read>(mut reader: R) -> Result<Ace, SecDescError> {
         let ace_type = AceType(reader.read_u8()?);
-        let ace_flags = AceFlags::from_bits_truncate(
-            reader.read_u8()?
-        );
+        let ace_flags = AceFlags::from_bits_truncate(reader.read_u8()?);
         let size = reader.read_u16::<LittleEndian>()?;
 
         // Create data buffer
-        let mut data_buffer = vec![0;(size - 4) as usize];
+        let mut data_buffer = vec![0; (size - 4) as usize];
         reader.read_exact(&mut data_buffer)?;
 
         // Get data structure
         let data = match ace_type.as_u8() {
-            ACCESS_ALLOWED_ACE_TYPE |
-            ACCESS_DENIED_ACE_TYPE |
-            SYSTEM_AUDIT_ACE_TYPE |
-            SYSTEM_ALARM_ACE_TYPE |
-            ACCESS_ALLOWED_CALLBACK_ACE_TYPE |
-            ACCESS_DENIED_CALLBACK_ACE_TYPE |
-            SYSTEM_AUDIT_CALLBACK_ACE_TYPE |
-            SYSTEM_ALARM_CALLBACK_ACE_TYPE |
-            SYSTEM_MANDATORY_LABEL_ACE_TYPE => {
-                AceData::Basic(
-                    AceBasic::new(
-                        Cursor::new(data_buffer)
-                    )?
-                )
-            },
-            ACCESS_ALLOWED_OBJECT_ACE_TYPE |
-            ACCESS_DENIED_OBJECT_ACE_TYPE |
-            SYSTEM_AUDIT_OBJECT_ACE_TYPE |
-            SYSTEM_ALARM_OBJECT_ACE_TYPE |
-            ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE |
-            ACCESS_DENIED_CALLBACK_OBJECT_ACE_TYPE |
-            SYSTEM_AUDIT_CALLBACK_OBJECT_ACE_TYPE |
-            SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE => {
-                AceData::Object(
-                    AceObject::new(
-                        Cursor::new(data_buffer)
-                    )?
-                )
-            },
-            // Unknown data structures
-            ACCESS_ALLOWED_COMPOUND_ACE_TYPE => {
-                AceData::Unhandled(
-                    RawAce(data_buffer)
-                )
-            },
-            _ => {
-                AceData::Unhandled(
-                    RawAce(data_buffer)
-                )
+            ACCESS_ALLOWED_ACE_TYPE
+            | ACCESS_DENIED_ACE_TYPE
+            | SYSTEM_AUDIT_ACE_TYPE
+            | SYSTEM_ALARM_ACE_TYPE
+            | ACCESS_ALLOWED_CALLBACK_ACE_TYPE
+            | ACCESS_DENIED_CALLBACK_ACE_TYPE
+            | SYSTEM_AUDIT_CALLBACK_ACE_TYPE
+            | SYSTEM_ALARM_CALLBACK_ACE_TYPE
+            | SYSTEM_MANDATORY_LABEL_ACE_TYPE => {
+                AceData::Basic(AceBasic::new(Cursor::new(data_buffer))?)
             }
+            ACCESS_ALLOWED_OBJECT_ACE_TYPE
+            | ACCESS_DENIED_OBJECT_ACE_TYPE
+            | SYSTEM_AUDIT_OBJECT_ACE_TYPE
+            | SYSTEM_ALARM_OBJECT_ACE_TYPE
+            | ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE
+            | ACCESS_DENIED_CALLBACK_OBJECT_ACE_TYPE
+            | SYSTEM_AUDIT_CALLBACK_OBJECT_ACE_TYPE
+            | SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE => {
+                AceData::Object(AceObject::new(Cursor::new(data_buffer))?)
+            }
+            // Unknown data structures
+            ACCESS_ALLOWED_COMPOUND_ACE_TYPE => AceData::Unhandled(RawAce(data_buffer)),
+            _ => AceData::Unhandled(RawAce(data_buffer)),
         };
 
-        Ok(
-            Ace {
-                ace_type: ace_type,
-                ace_flags: ace_flags,
-                size: size,
-                data: data
-            }
-        )
+        Ok(Ace {
+            ace_type: ace_type,
+            ace_flags: ace_flags,
+            size: size,
+            data: data,
+        })
     }
 }
 
@@ -497,53 +469,50 @@ impl Ace {
 pub enum AceData {
     Basic(AceBasic),
     Object(AceObject),
-    Unhandled(RawAce)
+    Unhandled(RawAce),
 }
 
-#[derive(Serialize,Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct AceBasic {
     pub access_rights: u32,
-    pub sid: Sid
+    pub sid: Sid,
 }
 impl AceBasic {
-    pub fn new<R: Read>(mut reader: R) -> Result<AceBasic,SecDescError> {
+    pub fn new<R: Read>(mut reader: R) -> Result<AceBasic, SecDescError> {
         let access_rights = reader.read_u32::<LittleEndian>()?;
         let sid = Sid::new(&mut reader)?;
 
-        Ok(
-            AceBasic{
-                access_rights: access_rights,
-                sid: sid
-            }
-        )
+        Ok(AceBasic {
+            access_rights: access_rights,
+            sid: sid,
+        })
     }
 }
 
-#[derive(Serialize,Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct AceObject {
     pub access_rights: u32,
     pub flags: u32,
     pub object_type: Guid,
     pub inherited_type: Guid,
-    pub sid: Sid
+    pub sid: Sid,
 }
+
 impl AceObject {
-    pub fn new<R: Read>(mut reader: R) -> Result<AceObject,SecDescError> {
+    pub fn new<R: Read>(mut reader: R) -> Result<AceObject, SecDescError> {
         let access_rights = reader.read_u32::<LittleEndian>()?;
         let flags = reader.read_u32::<LittleEndian>()?;
         let object_type = Guid::new(&mut reader)?;
         let inherited_type = Guid::new(&mut reader)?;
         let sid = Sid::new(&mut reader)?;
 
-        Ok(
-            AceObject{
-                access_rights: access_rights,
-                flags: flags,
-                object_type: object_type,
-                inherited_type: inherited_type,
-                sid: sid
-            }
-        )
+        Ok(AceObject {
+            access_rights: access_rights,
+            flags: flags,
+            object_type: object_type,
+            inherited_type: inherited_type,
+            sid: sid,
+        })
     }
 }
 
@@ -551,202 +520,177 @@ impl AceObject {
 pub struct RawAce(pub Vec<u8>);
 impl fmt::Debug for RawAce {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{:?}",
-            utils::to_hex_string(&self.0),
-        )
+        write!(f, "{:?}", utils::to_hex_string(&self.0),)
     }
 }
 impl ser::Serialize for RawAce {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
-        serializer.serialize_str(&format!("{}", utils::to_hex_string(
-            &self.0
-        )))
+        serializer.serialize_str(&format!("{}", utils::to_hex_string(&self.0)))
     }
 }
 
 // SID
 // https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-identifier
-#[derive(Debug,Clone)]
- pub struct Sid {
-     revision_number: u8,
-     sub_authority_count: u8,
-     authority: Authority,
-     sub_authorities: SubAuthorityList
- }
- impl Sid {
-     pub fn new<R: Read>(mut reader: R) -> Result<Sid,SecDescError> {
-         let revision_number = reader.read_u8()?;
-         let sub_authority_count = reader.read_u8()?;
+#[derive(Debug, Clone)]
+pub struct Sid {
+    revision_number: u8,
+    sub_authority_count: u8,
+    authority: Authority,
+    sub_authorities: SubAuthorityList,
+}
+impl Sid {
+    pub fn new<R: Read>(mut reader: R) -> Result<Sid, SecDescError> {
+        let revision_number = reader.read_u8()?;
+        let sub_authority_count = reader.read_u8()?;
 
-         let mut buf_a = [0;6];
-         reader.read_exact(&mut buf_a)?;
-         let authority = Authority::new(
-             &buf_a
-         )?;
+        let mut buf_a = [0; 6];
+        reader.read_exact(&mut buf_a)?;
+        let authority = Authority::new(&buf_a)?;
 
-         let mut buf_sa = vec![0;(sub_authority_count*4) as usize];
-         reader.read_exact(&mut buf_sa)?;
-         let sub_authorities = SubAuthorityList::new(
-             &buf_sa.as_slice(),
-             sub_authority_count
-         )?;
+        let mut buf_sa = vec![0; (sub_authority_count * 4) as usize];
+        reader.read_exact(&mut buf_sa)?;
+        let sub_authorities = SubAuthorityList::new(&buf_sa.as_slice(), sub_authority_count)?;
 
-         Ok(
-             Sid {
-                 revision_number: revision_number,
-                 sub_authority_count: sub_authority_count,
-                 authority: authority,
-                 sub_authorities: sub_authorities
-             }
-         )
-     }
+        Ok(Sid {
+            revision_number: revision_number,
+            sub_authority_count: sub_authority_count,
+            authority: authority,
+            sub_authorities: sub_authorities,
+        })
+    }
 
-     pub fn to_string(&self)->String {
-         format!(
-             "S-{}-{}-{}",self.revision_number,self.authority,
-             self.sub_authorities.to_string()
-         )
-     }
- }
- impl fmt::Display for Sid {
-     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-         write!(f,"{}",self.to_string())
-     }
- }
- impl ser::Serialize for Sid {
-     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-         where S: ser::Serializer
-     {
-         serializer.serialize_str(&format!("{}", self.to_string()))
-     }
- }
-
-#[derive(Serialize,Debug,Clone)]
-pub struct Authority(u64);
-impl Authority {
-    pub fn new(buffer: &[u8]) -> Result<Authority,SecDescError> {
-        let value = BigEndian::read_u64(&[
-            &[0x00,0x00],
-            &buffer[0..6]
-        ].concat());
-
-        Ok(
-            Authority(value)
+    pub fn to_string(&self) -> String {
+        format!(
+            "S-{}-{}-{}",
+            self.revision_number,
+            self.authority,
+            self.sub_authorities.to_string()
         )
     }
 }
-impl fmt::Display for Authority {
+impl fmt::Display for Sid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.0)
+        write!(f, "{}", self.to_string())
     }
 }
+impl ser::Serialize for Sid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.to_string()))
+    }
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct Authority(u64);
+impl Authority {
+    pub fn new(buffer: &[u8]) -> Result<Authority, SecDescError> {
+        let value = BigEndian::read_u64(&[&[0x00, 0x00], &buffer[0..6]].concat());
+
+        Ok(Authority(value))
+    }
+}
+
+impl fmt::Display for Authority {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[test]
 fn authority() {
-    let buffer: &[u8] = &[
-        0x00,0x00,0x00,0x00,0x00,0x05
-    ];
+    let buffer: &[u8] = &[0x00, 0x00, 0x00, 0x00, 0x00, 0x05];
 
     let authority = match Authority::new(&buffer) {
         Ok(authority) => authority,
-        Err(error) => panic!(error)
+        Err(error) => panic!(error),
     };
 
-    assert_eq!(authority.0,5);
+    assert_eq!(authority.0, 5);
 }
 
-
-#[derive(Serialize,Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct SubAuthorityList(Vec<SubAuthority>);
 impl SubAuthorityList {
-    pub fn new(buffer: &[u8], count: u8) -> Result<SubAuthorityList,SecDescError> {
+    pub fn new(buffer: &[u8], count: u8) -> Result<SubAuthorityList, SecDescError> {
         let mut list: Vec<SubAuthority> = Vec::new();
 
         for i in 0..count {
             //SubAuthority offset
-            let o: usize = (i*4) as usize;
-            let sub = SubAuthority::new(
-                &buffer[o..o+4]
-            )?;
+            let o: usize = (i * 4) as usize;
+            let sub = SubAuthority::new(&buffer[o..o + 4])?;
             list.push(sub);
         }
 
-        Ok(
-            SubAuthorityList(list)
-        )
+        Ok(SubAuthorityList(list))
     }
 
-    pub fn to_string(&self)->String{
+    pub fn to_string(&self) -> String {
         let mut s_vec: Vec<String> = Vec::new();
         for sa in &self.0 {
             s_vec.push(sa.to_string())
         }
-        format!("{}",s_vec.join("-"))
+        format!("{}", s_vec.join("-"))
     }
 }
 
 #[test]
 fn sub_authority_list() {
     let buffer: &[u8] = &[
-        0x12,0x00,0x00,0x00, 0x00,0x13,0x18,0x00, 0x3F,0x00,0x0F,0x00
+        0x12, 0x00, 0x00, 0x00, 0x00, 0x13, 0x18, 0x00, 0x3F, 0x00, 0x0F, 0x00,
     ];
 
-    let sub_authority = match SubAuthorityList::new(&buffer,3) {
+    let sub_authority = match SubAuthorityList::new(&buffer, 3) {
         Ok(sub_authority) => sub_authority,
-        Err(error) => panic!(error)
+        Err(error) => panic!(error),
     };
-    assert_eq!(sub_authority.0[0].0,18);
-    assert_eq!(sub_authority.0[1].0,1577728);
-    assert_eq!(sub_authority.0[2].0,983103);
+    assert_eq!(sub_authority.0[0].0, 18);
+    assert_eq!(sub_authority.0[1].0, 1577728);
+    assert_eq!(sub_authority.0[2].0, 983103);
 }
 
-#[derive(Serialize,Debug,Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct SubAuthority(u32);
 impl SubAuthority {
-    pub fn new(buffer: &[u8]) -> Result<SubAuthority,SecDescError> {
-        Ok(
-            SubAuthority(
-                LittleEndian::read_u32(&buffer[0..4])
-            )
-        )
+    pub fn new(buffer: &[u8]) -> Result<SubAuthority, SecDescError> {
+        Ok(SubAuthority(LittleEndian::read_u32(&buffer[0..4])))
     }
 
-    pub fn to_string(&self)->String{
-        format!("{}",self.0)
+    pub fn to_string(&self) -> String {
+        format!("{}", self.0)
     }
 }
 impl fmt::Display for SubAuthority {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.0)
+        write!(f, "{}", self.0)
     }
 }
 #[test]
 fn sub_authority() {
-    let buffer: &[u8] = &[
-        0x12,0x00,0x00,0x00
-    ];
+    let buffer: &[u8] = &[0x12, 0x00, 0x00, 0x00];
 
     let sub_authority = match SubAuthority::new(&buffer) {
         Ok(sub_authority) => sub_authority,
-        Err(error) => panic!(error)
+        Err(error) => panic!(error),
     };
 
-    assert_eq!(sub_authority.0,18);
+    assert_eq!(sub_authority.0, 18);
 }
 
 #[test]
 fn sid_test_01() {
     let buffer: &[u8] = &[
-        0x01,0x01,0x00,0x00,0x00,0x00,0x00,0x05,0x12,0x00,0x00,0x00
+        0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x12, 0x00, 0x00, 0x00,
     ];
 
     let sid = match Sid::new(Cursor::new(buffer)) {
         Ok(sid) => sid,
-        Err(error) => panic!(error)
+        Err(error) => panic!(error),
     };
 
-    assert_eq!(format!("{}",sid),"S-1-5-18");
+    assert_eq!(format!("{}", sid), "S-1-5-18");
 }
