@@ -68,21 +68,26 @@ impl Debug for MftReference {
     }
 }
 
-#[test]
-fn test_mft_reference() {
-    use std::mem;
-    let raw_reference: &[u8] = &[0x73, 0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0x91];
+#[cfg(test)]
 
-    let mft_reference = MftReference(LittleEndian::read_u64(&raw_reference[0..8]));
-    assert_eq!(mft_reference.0, 10477624533077459059);
-    assert_eq!(format!("{}", mft_reference), "10477624533077459059");
-    // assert_eq!(mft_reference.sequence,37224);
+mod tests {
+    #[test]
+    fn test_mft_reference() {
+        use std::mem;
+        let raw_reference: &[u8] = &[0x73, 0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0x91];
 
-    let mft_reference_01 = MftReference::get_from_entry_and_seq(115, 37224);
-    assert_eq!(mft_reference_01.0, 10477624533077459059);
+        let mft_reference = MftReference(LittleEndian::read_u64(&raw_reference[0..8]));
+        assert_eq!(mft_reference.0, 10477624533077459059);
+        assert_eq!(format!("{}", mft_reference), "10477624533077459059");
+        // assert_eq!(mft_reference.sequence,37224);
 
-    let mut mft_reference_02: MftReference = unsafe { mem::zeroed() };
-    assert_eq!(mft_reference_02.0, 0);
-    mft_reference_02.from_entry_and_seq(115, 37224);
-    assert_eq!(mft_reference_02.0, 10477624533077459059);
+        let mft_reference_01 = MftReference::get_from_entry_and_seq(115, 37224);
+        assert_eq!(mft_reference_01.0, 10477624533077459059);
+
+        let mut mft_reference_02: MftReference = unsafe { mem::zeroed() };
+        assert_eq!(mft_reference_02.0, 0);
+        mft_reference_02.from_entry_and_seq(115, 37224);
+        assert_eq!(mft_reference_02.0, 10477624533077459059);
+    }
+
 }

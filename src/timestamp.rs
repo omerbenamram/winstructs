@@ -172,53 +172,63 @@ pub fn raw_to_wintimestamp<R: Read>(mut buffer: R) -> Result<WinTimestamp, Error
     Ok(win_timestamp)
 }
 
-#[test]
-fn test_wintimestamp() {
-    let raw_timestamp: &[u8] = &[0x53, 0xC7, 0x8B, 0x18, 0xC5, 0xCC, 0xCE, 0x01];
+#[cfg(test)]
+mod tests {
+    use crate::timestamp::{raw_to_wintimestamp, DosDate, DosDateTime, DosTime, WinTimestamp};
 
-    let time_stamp: WinTimestamp = match raw_to_wintimestamp(raw_timestamp) {
-        Ok(time_stamp) => time_stamp,
-        Err(error) => panic!(error),
-    };
+    #[test]
+    fn test_wintimestamp() {
+        let raw_timestamp: &[u8] = &[0x53, 0xC7, 0x8B, 0x18, 0xC5, 0xCC, 0xCE, 0x01];
 
-    assert_eq!(format!("{}", time_stamp), "2013-10-19 12:16:53.276040");
-    assert_eq!(format!("{:?}", time_stamp), "2013-10-19 12:16:53.276040");
-    assert_eq!(time_stamp.0, 130266586132760403);
-}
-#[test]
-fn test_dosdate() {
-    let dos_date = DosDate(16492);
+        let time_stamp: WinTimestamp = match raw_to_wintimestamp(raw_timestamp) {
+            Ok(time_stamp) => time_stamp,
+            Err(error) => panic!(error),
+        };
 
-    assert_eq!(format!("{:?}", dos_date), "2012-03-12");
-    assert_eq!(dos_date.0, 16492);
-}
-#[test]
-fn test_dosdate_zeros() {
-    let raw_date: &[u8] = &[0x00, 0x00];
-    let date = DosDate::new(raw_date).unwrap();
-    assert_eq!(format!("{}", date), "1980-01-01");
-    assert_eq!(format!("{:?}", date), "1980-01-01");
-    assert_eq!(date.0, 0);
-}
-#[test]
-fn test_dostime() {
-    let dos_time = DosTime(43874);
+        assert_eq!(format!("{}", time_stamp), "2013-10-19 12:16:53.276040");
+        assert_eq!(format!("{:?}", time_stamp), "2013-10-19 12:16:53.276040");
+        assert_eq!(time_stamp.0, 130266586132760403);
+    }
 
-    assert_eq!(format!("{:?}", dos_time), "21:27:04");
-    assert_eq!(dos_time.0, 43874);
-}
-#[test]
-fn test_dostime_zeros() {
-    let raw_time: &[u8] = &[0x00, 0x00];
-    let time = DosTime::new(raw_time).unwrap();
-    assert_eq!(format!("{}", time), "00:00:00");
-    assert_eq!(format!("{:?}", time), "00:00:00");
-    assert_eq!(time.0, 0);
-}
-#[test]
-fn test_dosdatetime() {
-    let dos_time = DosDateTime(2875342956);
+    #[test]
+    fn test_dosdate() {
+        let dos_date = DosDate(16492);
 
-    assert_eq!(format!("{:?}", dos_time), "2012-03-12 21:27:04");
-    assert_eq!(dos_time.0, 2875342956);
+        assert_eq!(format!("{:?}", dos_date), "2012-03-12");
+        assert_eq!(dos_date.0, 16492);
+    }
+
+    #[test]
+    fn test_dosdate_zeros() {
+        let raw_date: &[u8] = &[0x00, 0x00];
+        let date = DosDate::new(raw_date).unwrap();
+        assert_eq!(format!("{}", date), "1980-01-01");
+        assert_eq!(format!("{:?}", date), "1980-01-01");
+        assert_eq!(date.0, 0);
+    }
+
+    #[test]
+    fn test_dostime() {
+        let dos_time = DosTime(43874);
+
+        assert_eq!(format!("{:?}", dos_time), "21:27:04");
+        assert_eq!(dos_time.0, 43874);
+    }
+
+    #[test]
+    fn test_dostime_zeros() {
+        let raw_time: &[u8] = &[0x00, 0x00];
+        let time = DosTime::new(raw_time).unwrap();
+        assert_eq!(format!("{}", time), "00:00:00");
+        assert_eq!(format!("{:?}", time), "00:00:00");
+        assert_eq!(time.0, 0);
+    }
+
+    #[test]
+    fn test_dosdatetime() {
+        let dos_time = DosDateTime(2875342956);
+
+        assert_eq!(format!("{:?}", dos_time), "2012-03-12 21:27:04");
+        assert_eq!(dos_time.0, 2875342956);
+    }
 }
