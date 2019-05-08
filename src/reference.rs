@@ -1,6 +1,5 @@
-use crate::serialize::serialize_u64;
 use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
-use serde::ser;
+use serde::Serialize;
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::mem::transmute;

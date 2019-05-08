@@ -1,7 +1,10 @@
 use crate::guid::Guid;
 use crate::utils;
+
 use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt};
 use serde::{ser, Serialize};
+use bitflags::bitflags;
+use log::debug;
 
 use std::{
     fmt, io,
@@ -40,7 +43,7 @@ impl From<io::Error> for SecDescError {
         SecDescError {
             message: format!("{}", err),
             kind: SdErrorKind::IoError,
-            trace: backtrace!(),
+            trace: String::new(),
         }
     }
 }
