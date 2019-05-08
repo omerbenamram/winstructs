@@ -1,6 +1,6 @@
 [package]
 name = "winstructs"
-description = "Common structured used in parsing various windows protocols"
+description = "Common structures used in parsing various windows protocols"
 homepage = "https://github.com/omerbenamram/winstructs"
 repository = "https://github.com/omerbenamram/winstrcuts"
 license = "MIT/Apache-2.0"
