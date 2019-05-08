@@ -69,7 +69,6 @@ impl Debug for MftReference {
 }
 
 #[cfg(test)]
-
 mod tests {
     use crate::reference::MftReference;
     use byteorder::{LittleEndian, ByteOrder};

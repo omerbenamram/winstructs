@@ -11,8 +11,10 @@ pub static mut TIMESTAMP_FORMAT: &'static str = "%Y-%m-%d %H:%M:%S%.3f";
 pub static mut DATE_FORMAT: &'static str = "%Y-%m-%d";
 
 #[derive(Clone)]
-pub struct WinTimestamp(pub u64);
+pub struct WinTimestamp(u64);
+
 impl WinTimestamp {
+    // TODO: this should be UTC, not naive.
     pub fn to_datetime(&self) -> chrono::NaiveDateTime {
         // Get nanoseconds (100-nanosecond intervals)
         let t_micro = self.0 / 10;
@@ -23,71 +25,72 @@ impl WinTimestamp {
             time::Duration::microseconds(t_micro as i64)) as chrono::NaiveDateTime
     }
 }
+
 impl Display for WinTimestamp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_datetime())
     }
 }
+
 impl Debug for WinTimestamp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_datetime())
     }
 }
-impl ser::Serialize for WinTimestamp {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&format!(
-            "{}",
-            self.to_datetime()
-                .format(unsafe { TIMESTAMP_FORMAT })
-                .to_string()
-        ))
-    }
-}
 
 #[derive(Clone)]
-pub struct DosDate(pub u16);
+pub struct DosDate(u16);
+
 impl DosDate {
-    pub fn new<R: Read>(mut buffer: R) -> Result<DosDate, Error> {
-        let dos_date = DosDate(buffer.read_u16::<LittleEndian>().unwrap());
-        Ok(dos_date)
+    pub fn new(date: u16) -> Self {
+        DosDate(date)
+    }
+
+    pub fn from_reader<R: Read>(mut buffer: R) -> Result<DosDate, Error> {
+        Ok(DosDate::new(buffer.read_u16::<LittleEndian>()?))
     }
 
     pub fn to_date(&self) -> chrono::NaiveDate {
         let mut day = self.0 & 0x1F;
+
         if day == 0 {
             day = 1
         }
+
         let mut month = (self.0 >> 5) & 0x0F;
+
         if month == 0 {
             month = 1
         }
+
         let year = (self.0 >> 9) + 1980;
 
-        chrono::NaiveDate::from_ymd(year as i32, month as u32, day as u32)
+        chrono::NaiveDate::from_ymd(i32::from(year), u32::from(month), u32::from(day))
+    }
+
+    pub fn to_date_formatted(&self, format: &str) -> String {
+        self.to_date().format(format).to_string()
     }
 }
+
 impl Display for DosDate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_date())
     }
 }
+
 impl Debug for DosDate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_date())
     }
 }
+
 impl ser::Serialize for DosDate {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&format!(
-            "{}",
-            self.to_date().format(unsafe { DATE_FORMAT }).to_string()
-        ))
+        serializer.serialize_str(&)
     }
 }
 
@@ -104,19 +107,22 @@ impl DosTime {
         let min = (self.0 >> 5) & 0x3F;
         let hour = (self.0 >> 11) & 0x1F;
 
-        chrono::NaiveTime::from_hms(hour as u32, min as u32, sec as u32)
+        chrono::NaiveTime::from_hms(u32::from(hour), u32::from(min), u32::from(sec))
     }
 }
+
 impl Display for DosTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_time())
     }
 }
+
 impl Debug for DosTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_time())
     }
 }
+
 impl ser::Serialize for DosTime {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -128,6 +134,7 @@ impl ser::Serialize for DosTime {
 
 #[derive(Clone)]
 pub struct DosDateTime(pub u32);
+
 impl DosDateTime {
     pub fn new<R: Read>(mut buffer: R) -> Result<DosDateTime, Error> {
         let dos_datetime = DosDateTime(buffer.read_u32::<LittleEndian>()?);
@@ -142,6 +149,7 @@ impl DosDateTime {
         )
     }
 }
+
 impl Display for DosDateTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_datetime())
@@ -150,19 +158,6 @@ impl Display for DosDateTime {
 impl Debug for DosDateTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_datetime())
-    }
-}
-impl ser::Serialize for DosDateTime {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&format!(
-            "{}",
-            self.to_datetime()
-                .format(unsafe { TIMESTAMP_FORMAT })
-                .to_string()
-        ))
     }
 }
 
@@ -177,7 +172,7 @@ mod tests {
     use crate::timestamp::{raw_to_wintimestamp, DosDate, DosDateTime, DosTime, WinTimestamp};
 
     #[test]
-    fn test_wintimestamp() {
+    fn test_win_timestamp() {
         let raw_timestamp: &[u8] = &[0x53, 0xC7, 0x8B, 0x18, 0xC5, 0xCC, 0xCE, 0x01];
 
         let time_stamp: WinTimestamp = match raw_to_wintimestamp(raw_timestamp) {
@@ -187,7 +182,6 @@ mod tests {
 
         assert_eq!(format!("{}", time_stamp), "2013-10-19 12:16:53.276040");
         assert_eq!(format!("{:?}", time_stamp), "2013-10-19 12:16:53.276040");
-        assert_eq!(time_stamp.0, 130266586132760403);
     }
 
     #[test]
@@ -201,7 +195,7 @@ mod tests {
     #[test]
     fn test_dosdate_zeros() {
         let raw_date: &[u8] = &[0x00, 0x00];
-        let date = DosDate::new(raw_date).unwrap();
+        let date = DosDate::from_reader(raw_date).unwrap();
         assert_eq!(format!("{}", date), "1980-01-01");
         assert_eq!(format!("{:?}", date), "1980-01-01");
         assert_eq!(date.0, 0);
@@ -226,9 +220,9 @@ mod tests {
 
     #[test]
     fn test_dosdatetime() {
-        let dos_time = DosDateTime(2875342956);
+        let dos_time = DosDateTime(2_875_342_956);
 
         assert_eq!(format!("{:?}", dos_time), "2012-03-12 21:27:04");
-        assert_eq!(dos_time.0, 2875342956);
+        assert_eq!(dos_time.0, 2_875_342_956);
     }
 }

@@ -221,11 +221,11 @@ impl ser::Serialize for AceFlags {
 bitflags! {
     pub struct StandardAccessFlags: u32 {
         // Standard access rights flags
-        const SA_RIGHT_DELETE = 0x0001_0000;
-        const SA_RIGHT_READCONTROL = 0x0002_0000;
-        const SA_RIGHT_WRITESD = 0x0004_0000;
-        const SA_RIGHT_WRITEOWNER = 0x0008_0000;
-        const SA_RIGHT_SYNCHRONIZE = 0x0010_0000;
+        const SA_RIGHT_DELETE           = 0x0001_0000;
+        const SA_RIGHT_READCONTROL      = 0x0002_0000;
+        const SA_RIGHT_WRITESD          = 0x0004_0000;
+        const SA_RIGHT_WRITEOWNER       = 0x0008_0000;
+        const SA_RIGHT_SYNCHRONIZE      = 0x0010_0000;
     }
 }
 
@@ -247,17 +247,17 @@ impl ser::Serialize for StandardAccessFlags {
 bitflags! {
     pub struct NonFolderAccessFlags: u32 {
         // Non-folder item access rights flags
-        const NFA_RIGHT_READBODY = 0x0000_0001; //FILE_READ_DATA
-        const NFA_RIGHT_WRITEBODY = 0x0000_0002; //FILE_WRITE_DATA
-        const NFA_RIGHT_APPENDMSG = 0x0000_0004;
-        const NFA_RIGHT_READPROPERTY = 0x0000_0008; //FILE_READ_EA
-        const NFA_RIGHT_WRITEPROPERTY = 0x0000_0010; //FILE_WRITE_EA
-        const NFA_RIGHT_EXECUTE = 0x0000_0020; //FILE_EXECUTE
-        const NFA_RIGHT_READATTRIBUTES = 0x0000_0080; //FILE_READ_ATTRIBUTES
-        const NFA_RIGHT_WRITEATTRIBUTES = 0x0000_0100; //FILE_WRITE_ATTRIBUTES
-        const NFA_RIGHT_WRITEOWNPROPERTY = 0x0000_0200;
-        const NFA_RIGHT_DELETEOWNITEM = 0x0000_0400;
-        const NFA_RIGHT_VIEWITEM = 0x0000_0800;
+        const NFA_RIGHT_READBODY                = 0x0000_0001; //FILE_READ_DATA
+        const NFA_RIGHT_WRITEBODY               = 0x0000_0002; //FILE_WRITE_DATA
+        const NFA_RIGHT_APPENDMSG               = 0x0000_0004;
+        const NFA_RIGHT_READPROPERTY            = 0x0000_0008; //FILE_READ_EA
+        const NFA_RIGHT_WRITEPROPERTY           = 0x0000_0010; //FILE_WRITE_EA
+        const NFA_RIGHT_EXECUTE                 = 0x0000_0020; //FILE_EXECUTE
+        const NFA_RIGHT_READATTRIBUTES          = 0x0000_0080; //FILE_READ_ATTRIBUTES
+        const NFA_RIGHT_WRITEATTRIBUTES         = 0x0000_0100; //FILE_WRITE_ATTRIBUTES
+        const NFA_RIGHT_WRITEOWNPROPERTY        = 0x0000_0200;
+        const NFA_RIGHT_DELETEOWNITEM           = 0x0000_0400;
+        const NFA_RIGHT_VIEWITEM                = 0x0000_0800;
     }
 }
 
@@ -279,18 +279,18 @@ impl ser::Serialize for NonFolderAccessFlags {
 bitflags! {
     pub struct FolderAccessFlags: u32 {
         // Folder item access rights flags
-        const FA_RIGHT_LISTCONTENTS = 0x0000_0001; //FILE_LIST_DIRECTORY
-        const FA_RIGHT_CREATEITEM = 0x0000_0002; //FILE_ADD_FILE
-        const FA_RIGHT_CREATECONTAINER = 0x0000_0004; //FILE_ADD_SUBDIRECTORY
-        const FA_RIGHT_READPROPERTY = 0x0000_0008; //FILE_READ_EA
-        const FA_RIGHT_WRITEPROPERTY = 0x0000_0010; //FILE_WRITE_EA
-        const FA_RIGHT_READATTRIBUTES = 0x0000_0080; //FILE_READ_ATTRIBUTES
-        const FA_RIGHT_WRITEATTRIBUTES = 0x0000_0100; //FILE_WRITE_ATTRIBUTES
-        const FA_RIGHT_WRITEOWNPROPERTY  = 0x0000_0200;
-        const FA_RIGHT_DELETEOWNITEM = 0x0000_0400;
-        const FA_RIGHT_VIEWITEM = 0x0000_0800;
-        const FA_RIGHT_OWNER = 0x0000_4000;
-        const FA_RIGHT_CONTACT = 0x0000_8000;
+        const FA_RIGHT_LISTCONTENTS               = 0x0000_0001; //FILE_LIST_DIRECTORY
+        const FA_RIGHT_CREATEITEM                 = 0x0000_0002; //FILE_ADD_FILE
+        const FA_RIGHT_CREATECONTAINER            = 0x0000_0004; //FILE_ADD_SUBDIRECTORY
+        const FA_RIGHT_READPROPERTY               = 0x0000_0008; //FILE_READ_EA
+        const FA_RIGHT_WRITEPROPERTY              = 0x0000_0010; //FILE_WRITE_EA
+        const FA_RIGHT_READATTRIBUTES             = 0x0000_0080; //FILE_READ_ATTRIBUTES
+        const FA_RIGHT_WRITEATTRIBUTES            = 0x0000_0100; //FILE_WRITE_ATTRIBUTES
+        const FA_RIGHT_WRITEOWNPROPERTY           = 0x0000_0200;
+        const FA_RIGHT_DELETEOWNITEM              = 0x0000_0400;
+        const FA_RIGHT_VIEWITEM                   = 0x0000_0800;
+        const FA_RIGHT_OWNER                      = 0x0000_4000;
+        const FA_RIGHT_CONTACT                    = 0x0000_8000;
     }
 }
 

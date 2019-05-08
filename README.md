@@ -1,4 +1,4 @@
-# r-winstructs
+# winstructs
 Windows Structures in Rust
 
 ## Change Log
@@ -9,7 +9,7 @@ Windows Structures in Rust
   - SecDescHeader
 
 #### rwinstructs 0.3.1 (2017-09-18)
-- Cleaned up searialization for SecurityDescriptor
+- Cleaned up serialization for SecurityDescriptor
 
 #### rwinstructs 0.3.0 (2017-09-14)
 - Added Clone impl for all Security Structures
