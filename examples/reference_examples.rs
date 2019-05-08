@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, LittleEndian};
 
-use rwinstructs::reference::{self, MftReference};
+use rwinstructs::reference::{MftReference};
 use serde_json;
 
 fn main() {
