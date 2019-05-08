@@ -29,7 +29,7 @@ pub static mut DATE_FORMAT: &'static str = "%Y-%m-%d";
 pub struct WinTimestamp(u64);
 
 impl WinTimestamp {
-    pub fn from_reader<R: Read>(mut reader: R) -> Result<WinTimestamp, io::Error> {
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<WinTimestamp, io::Error> {
         let win_timestamp = WinTimestamp(reader.read_u64::<LittleEndian>()?);
         Ok(win_timestamp)
     }
@@ -67,7 +67,7 @@ impl DosDate {
         DosDate(date)
     }
 
-    pub fn from_reader<R: Read>(mut buffer: R) -> Result<DosDate, io::Error> {
+    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosDate, io::Error> {
         Ok(DosDate::new(buffer.read_u16::<LittleEndian>()?))
     }
 
@@ -119,7 +119,7 @@ impl ser::Serialize for DosDate {
 /// MS-DOS date and MS-DOS time are packed 16-bit values that specify the month, day, year, and time of day an MS-DOS file was last written to.
 pub struct DosTime(pub u16);
 impl DosTime {
-    pub fn new<R: Read>(mut buffer: R) -> Result<DosTime, Box<dyn Error>> {
+    pub fn new<R: Read>(buffer: &mut R) -> Result<DosTime, Box<dyn Error>> {
         let dos_time = DosTime(buffer.read_u16::<LittleEndian>().unwrap());
         Ok(dos_time)
     }
@@ -158,7 +158,7 @@ impl ser::Serialize for DosTime {
 pub struct DosDateTime(pub u32);
 
 impl DosDateTime {
-    pub fn new<R: Read>(mut buffer: R) -> Result<DosDateTime, Box<dyn Error>> {
+    pub fn new<R: Read>(buffer: &mut R) -> Result<DosDateTime, Box<dyn Error>> {
         let dos_datetime = DosDateTime(buffer.read_u32::<LittleEndian>()?);
 
         Ok(dos_datetime)
