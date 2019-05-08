@@ -1,5 +1,11 @@
 [package]
 name = "winstructs"
+description = "Common structured used in parsing various windows protocols"
+homepage = "https://github.com/omerbenamram/winstructs"
+repository = "https://github.com/omerbenamram/winstrcuts"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+
 version = "0.1.0"
 authors = ["Omer Ben-Amram <omerbenamram@gmail.com>", "Matthew Seyer <matthew.seyer@gmail.com>"]
 edition = "2018"
