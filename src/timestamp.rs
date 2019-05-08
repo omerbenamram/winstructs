@@ -1,28 +1,48 @@
+//! This module provides utilities for reading various NT timestamp formats.
+
 use byteorder::{LittleEndian, ReadBytesExt}; //Reading little endian data structs
-use chrono; //Datetime Handling
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::ser;
+use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
-use std::io::Error;
-use std::io::Read;
-use time;
+use std::io::{self, Read};
+use time::Duration;
 
 pub static mut TIMESTAMP_FORMAT: &'static str = "%Y-%m-%d %H:%M:%S%.3f";
 pub static mut DATE_FORMAT: &'static str = "%Y-%m-%d";
 
 #[derive(Clone)]
+/// https://docs.microsoft.com/en-us/windows/desktop/api/minwinbase/ns-minwinbase-filetime
+/// Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC).
+/// # Example
+///
+/// ```
+/// # use winstructs::timestamp::WinTimestamp;
+/// let raw_timestamp: &[u8] = &[0x53, 0xC7, 0x8B, 0x18, 0xC5, 0xCC, 0xCE, 0x01];
+///
+/// let timestamp = WinTimestamp::from_reader(raw_timestamp).unwrap();
+///
+/// assert_eq!(format!("{}", timestamp), "2013-10-19 12:16:53.276040");
+/// assert_eq!(format!("{:?}", timestamp), "2013-10-19 12:16:53.276040");
+/// ```
 pub struct WinTimestamp(u64);
 
 impl WinTimestamp {
-    // TODO: this should be UTC, not naive.
-    pub fn to_datetime(&self) -> chrono::NaiveDateTime {
-        // Get nanoseconds (100-nanosecond intervals)
-        let t_micro = self.0 / 10;
+    pub fn from_reader<R: Read>(mut reader: R) -> Result<WinTimestamp, io::Error> {
+        let win_timestamp = WinTimestamp(reader.read_u64::<LittleEndian>()?);
+        Ok(win_timestamp)
+    }
+
+    pub fn to_datetime(&self) -> DateTime<Utc> {
+        let nanos_since_windows_epoch = self.0;
+
         // Add microseconds to timestamp via Duration
-        (chrono::NaiveDate::from_ymd(
-                1601, 1, 1
-            ).and_hms_nano(0, 0, 0, 0) + // Win Epoc = 1601-01-01
-            time::Duration::microseconds(t_micro as i64)) as chrono::NaiveDateTime
+        DateTime::from_utc(
+            NaiveDate::from_ymd(1601, 1, 1).and_hms_nano(0, 0, 0, 0)
+                + Duration::microseconds((nanos_since_windows_epoch / 10) as i64),
+            Utc,
+        )
     }
 }
 
@@ -39,6 +59,7 @@ impl Debug for WinTimestamp {
 }
 
 #[derive(Clone)]
+/// MS-DOS date and MS-DOS time are packed 16-bit values that specify the month, day, year, and time of day an MS-DOS file was last written to.
 pub struct DosDate(u16);
 
 impl DosDate {
@@ -46,7 +67,7 @@ impl DosDate {
         DosDate(date)
     }
 
-    pub fn from_reader<R: Read>(mut buffer: R) -> Result<DosDate, Error> {
+    pub fn from_reader<R: Read>(mut buffer: R) -> Result<DosDate, io::Error> {
         Ok(DosDate::new(buffer.read_u16::<LittleEndian>()?))
     }
 
@@ -90,14 +111,15 @@ impl ser::Serialize for DosDate {
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&)
+        serializer.serialize_str(&self.to_date().to_string())
     }
 }
 
 #[derive(Clone)]
+/// MS-DOS date and MS-DOS time are packed 16-bit values that specify the month, day, year, and time of day an MS-DOS file was last written to.
 pub struct DosTime(pub u16);
 impl DosTime {
-    pub fn new<R: Read>(mut buffer: R) -> Result<DosTime, Error> {
+    pub fn new<R: Read>(mut buffer: R) -> Result<DosTime, Box<dyn Error>> {
         let dos_time = DosTime(buffer.read_u16::<LittleEndian>().unwrap());
         Ok(dos_time)
     }
@@ -136,7 +158,7 @@ impl ser::Serialize for DosTime {
 pub struct DosDateTime(pub u32);
 
 impl DosDateTime {
-    pub fn new<R: Read>(mut buffer: R) -> Result<DosDateTime, Error> {
+    pub fn new<R: Read>(mut buffer: R) -> Result<DosDateTime, Box<dyn Error>> {
         let dos_datetime = DosDateTime(buffer.read_u32::<LittleEndian>()?);
 
         Ok(dos_datetime)
@@ -161,27 +183,18 @@ impl Debug for DosDateTime {
     }
 }
 
-#[allow(dead_code)]
-pub fn raw_to_wintimestamp<R: Read>(mut buffer: R) -> Result<WinTimestamp, Error> {
-    let win_timestamp: WinTimestamp = WinTimestamp(buffer.read_u64::<LittleEndian>().unwrap());
-    Ok(win_timestamp)
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::timestamp::{raw_to_wintimestamp, DosDate, DosDateTime, DosTime, WinTimestamp};
+    use crate::timestamp::{DosDate, DosDateTime, DosTime, WinTimestamp};
 
     #[test]
     fn test_win_timestamp() {
         let raw_timestamp: &[u8] = &[0x53, 0xC7, 0x8B, 0x18, 0xC5, 0xCC, 0xCE, 0x01];
 
-        let time_stamp: WinTimestamp = match raw_to_wintimestamp(raw_timestamp) {
-            Ok(time_stamp) => time_stamp,
-            Err(error) => panic!(error),
-        };
+        let timestamp = WinTimestamp::from_reader(raw_timestamp).unwrap();
 
-        assert_eq!(format!("{}", time_stamp), "2013-10-19 12:16:53.276040");
-        assert_eq!(format!("{:?}", time_stamp), "2013-10-19 12:16:53.276040");
+        assert_eq!(format!("{}", timestamp), "2013-10-19 12:16:53.276040");
+        assert_eq!(format!("{:?}", timestamp), "2013-10-19 12:16:53.276040");
     }
 
     #[test]

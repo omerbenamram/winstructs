@@ -7,7 +7,7 @@ use log::debug;
 use serde::{ser, Serialize};
 use std::error::Error;
 use std::fmt;
-use std::io::{self, Cursor, SeekFrom};
+use std::io::{Cursor, SeekFrom};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SecurityDescriptor {
