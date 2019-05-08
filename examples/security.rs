@@ -9,7 +9,7 @@ fn ace_example_01() {
         0x5B, 0x68, 0xE9, 0x03, 0x00, 0x00,
     ];
 
-    let ace = Ace::new(Cursor::new(buffer)).unwrap();
+    let ace = Ace::new(&mut Cursor::new(buffer)).unwrap();
 
     println!("{:#?}", ace);
     println!("{}", serde_json::to_string(&ace).unwrap());
@@ -27,7 +27,7 @@ fn acl_example_01() {
         0x00, 0x00, 0x00,
     ];
 
-    let acl = Acl::new(Cursor::new(buffer)).unwrap();
+    let acl = Acl::new(&mut Cursor::new(buffer)).unwrap();
     println!("{:#?}", acl);
     println!("{}", serde_json::to_string(&acl).unwrap());
 }
@@ -37,7 +37,7 @@ fn sid_example_01() {
         0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x12, 0x00, 0x00, 0x00,
     ];
 
-    let sid = Sid::new(Cursor::new(buffer)).unwrap();
+    let sid = Sid::new(&mut Cursor::new(buffer)).unwrap();
 
     println!("{:#?}", sid);
     println!("{}", sid);
@@ -60,7 +60,7 @@ fn security_descriptor_01() {
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x12, 0x00, 0x00, 0x00,
     ];
 
-    let sd = SecurityDescriptor::from_stream(Cursor::new(buffer)).unwrap();
+    let sd = SecurityDescriptor::from_stream(&mut Cursor::new(buffer)).unwrap();
 
     println!("{:#?}", sd);
     println!("{}", serde_json::to_string(&sd).unwrap());
