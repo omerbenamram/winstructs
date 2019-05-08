@@ -1,11 +1,11 @@
 //! ACL
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#access-control-list-acl
 
-use crate::err::{self, Result};
+use crate::err::{Result};
 use crate::security::ace::Ace;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::Serialize;
-use std::error::Error;
+
 use std::io::Read;
 
 #[derive(Serialize, Debug, Clone)]

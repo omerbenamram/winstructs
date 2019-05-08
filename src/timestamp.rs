@@ -1,11 +1,11 @@
 //! This module provides utilities for reading various NT timestamp formats.
-use crate::err::{self, Result};
+use crate::err::{Result};
 use byteorder::{LittleEndian, ReadBytesExt}; //Reading little endian data structs
 use chrono::{DateTime, NaiveDate, Utc};
 
 use std::fmt;
 use std::fmt::{Debug, Display};
-use std::io::{self, Read};
+use std::io::Read;
 use time::Duration;
 
 #[derive(Clone)]

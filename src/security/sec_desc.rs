@@ -6,7 +6,7 @@ use bitflags::bitflags;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::debug;
 use serde::{ser, Serialize};
-use std::error::Error;
+
 use std::fmt;
 use std::io::{Cursor, SeekFrom};
 

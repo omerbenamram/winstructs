@@ -8,7 +8,7 @@ use bitflags::bitflags;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::{ser, Serialize};
 use snafu::OptionExt;
-use std::error::Error;
+
 use std::fmt;
 use std::io::{Cursor, Read};
 

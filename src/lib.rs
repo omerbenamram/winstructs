@@ -1,7 +1,7 @@
 use std::io::{self, Read, Seek, SeekFrom};
 
 pub mod guid;
-pub mod reference;
+pub mod ntfs;
 pub mod security;
 pub mod timestamp;
 pub mod err;

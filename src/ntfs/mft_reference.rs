@@ -1,4 +1,4 @@
-use crate::err::{self, Result};
+use crate::err::{Result};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use serde::Serialize;
 
@@ -40,7 +40,7 @@ impl From<u64> for MftReference {
 
 #[cfg(test)]
 mod tests {
-    use crate::reference::MftReference;
+    use super::MftReference;
     use std::io::Cursor;
 
     #[test]

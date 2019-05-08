@@ -1,10 +1,10 @@
 //! SID
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-identifier
-use crate::err::{self, Result};
+use crate::err::{Result};
 use crate::security::authority::{Authority, SubAuthorityList};
 use byteorder::ReadBytesExt;
 use serde::ser;
-use std::error::Error;
+
 use std::fmt;
 use std::io::Read;
 
