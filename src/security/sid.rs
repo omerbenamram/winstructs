@@ -16,7 +16,7 @@ pub struct Sid {
     sub_authorities: SubAuthorityList,
 }
 impl Sid {
-    pub fn new<R: Read>(mut reader: R) -> Result<Sid, Box<dyn Error>> {
+    pub fn new<R: Read>(reader: &mut R) -> Result<Sid, Box<dyn Error>> {
         let revision_number = reader.read_u8()?;
         let sub_authority_count = reader.read_u8()?;
 
@@ -62,6 +62,7 @@ impl ser::Serialize for Sid {
 #[cfg(test)]
 mod tests {
     use crate::security::sid::Sid;
+    use std::io::Cursor;
 
     #[test]
     fn test_parses_sid() {
@@ -69,7 +70,7 @@ mod tests {
             0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x12, 0x00, 0x00, 0x00,
         ];
 
-        let sid = Sid::new(buffer).unwrap();
+        let sid = Sid::new(&mut Cursor::new(buffer)).unwrap();
 
         assert_eq!(format!("{}", sid), "S-1-5-18");
     }

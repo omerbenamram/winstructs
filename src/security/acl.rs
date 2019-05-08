@@ -21,7 +21,7 @@ pub struct Acl {
 }
 
 impl Acl {
-    pub fn new<R: Read>(mut reader: R) -> Result<Acl, Box<dyn Error>> {
+    pub fn new<R: Read>(reader: &mut R) -> Result<Acl, Box<dyn Error>> {
         let revision = reader.read_u8()?;
         let padding1 = reader.read_u8()?;
         let size = reader.read_u16::<LittleEndian>()?;
@@ -30,7 +30,7 @@ impl Acl {
         let mut entries: Vec<Ace> = Vec::new();
 
         for _i in 0..count {
-            let ace = Ace::new(&mut reader)?;
+            let ace = Ace::new(reader)?;
             entries.push(ace);
         }
 

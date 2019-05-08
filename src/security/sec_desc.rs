@@ -20,33 +20,42 @@ pub struct SecurityDescriptor {
 }
 
 impl SecurityDescriptor {
-    pub fn from_stream<S: ReadSeek>(mut stream: S) -> Result<SecurityDescriptor, Box<dyn Error>> {
-        let _offset = stream.tell()?;
+    pub fn from_stream<S: ReadSeek>(stream: &mut S) -> Result<SecurityDescriptor, Box<dyn Error>> {
+        let start_offset = stream.tell()?;
 
         let mut header_buf = [0; 20];
         stream.read_exact(&mut header_buf)?;
 
         let header = SecDescHeader::from_buffer(&header_buf)?;
-        stream.seek(SeekFrom::Start(_offset + header.owner_sid_offset as u64))?;
-        let owner_sid = Sid::new(&mut stream)?;
 
-        stream.seek(SeekFrom::Start(_offset + header.group_sid_offset as u64))?;
-        let group_sid = Sid::new(&mut stream)?;
+        stream.seek(SeekFrom::Start(
+            start_offset + header.owner_sid_offset as u64,
+        ))?;
+
+        let owner_sid = Sid::new(stream)?;
+
+        stream.seek(SeekFrom::Start(
+            start_offset + header.group_sid_offset as u64,
+        ))?;
+
+        let group_sid = Sid::new(stream)?;
 
         let dacl = match header.dacl_offset > 0 {
             true => {
-                debug!("dacl at offset: {}", _offset + header.dacl_offset as u64);
-                stream.seek(SeekFrom::Start(_offset + header.dacl_offset as u64))?;
-                Some(Acl::new(&mut stream)?)
+                stream.seek(SeekFrom::Start(start_offset + header.dacl_offset as u64))?;
+                Some(Acl::new(stream)?)
             }
             false => None,
         };
 
         let sacl = match header.sacl_offset > 0 {
             true => {
-                debug!("sacl at offset: {}", _offset + header.sacl_offset as u64);
-                stream.seek(SeekFrom::Start(_offset + header.sacl_offset as u64))?;
-                Some(Acl::new(&mut stream)?)
+                debug!(
+                    "sacl at offset: {}",
+                    start_offset + header.sacl_offset as u64
+                );
+                stream.seek(SeekFrom::Start(start_offset + header.sacl_offset as u64))?;
+                Some(Acl::new(stream)?)
             }
             false => None,
         };

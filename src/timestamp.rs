@@ -2,15 +2,11 @@
 
 use byteorder::{LittleEndian, ReadBytesExt}; //Reading little endian data structs
 use chrono::{DateTime, NaiveDate, Utc};
-use serde::ser;
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::io::{self, Read};
 use time::Duration;
-
-pub static mut TIMESTAMP_FORMAT: &'static str = "%Y-%m-%d %H:%M:%S%.3f";
-pub static mut DATE_FORMAT: &'static str = "%Y-%m-%d";
 
 #[derive(Clone)]
 /// https://docs.microsoft.com/en-us/windows/desktop/api/minwinbase/ns-minwinbase-filetime
@@ -106,22 +102,16 @@ impl Debug for DosDate {
     }
 }
 
-impl ser::Serialize for DosDate {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&self.to_date().to_string())
-    }
-}
-
 #[derive(Clone)]
 /// MS-DOS date and MS-DOS time are packed 16-bit values that specify the month, day, year, and time of day an MS-DOS file was last written to.
-pub struct DosTime(pub u16);
+pub struct DosTime(u16);
 impl DosTime {
-    pub fn new<R: Read>(buffer: &mut R) -> Result<DosTime, Box<dyn Error>> {
-        let dos_time = DosTime(buffer.read_u16::<LittleEndian>().unwrap());
-        Ok(dos_time)
+    pub fn new(value: u16) -> Self {
+        DosTime(value)
+    }
+
+    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosTime, Box<dyn Error>> {
+        Ok(DosTime::new(buffer.read_u16::<LittleEndian>()?))
     }
 
     pub fn to_time(&self) -> chrono::NaiveTime {
@@ -145,30 +135,34 @@ impl Debug for DosTime {
     }
 }
 
-impl ser::Serialize for DosTime {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&format!("{}", self.to_time()))
-    }
+#[derive(Clone)]
+pub struct DosDateTime {
+    date: u16,
+    time: u16,
 }
 
-#[derive(Clone)]
-pub struct DosDateTime(pub u32);
-
 impl DosDateTime {
-    pub fn new<R: Read>(buffer: &mut R) -> Result<DosDateTime, Box<dyn Error>> {
-        let dos_datetime = DosDateTime(buffer.read_u32::<LittleEndian>()?);
+    pub fn new(date: u16, time: u16) -> Self {
+        DosDateTime { date, time }
+    }
+    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosDateTime, Box<dyn Error>> {
+        let date = buffer.read_u16::<LittleEndian>()?;
+        let time = buffer.read_u16::<LittleEndian>()?;
 
-        Ok(dos_datetime)
+        Ok(DosDateTime::new(date, time))
     }
 
     pub fn to_datetime(&self) -> chrono::NaiveDateTime {
-        chrono::NaiveDateTime::new(
-            DosDate((self.0 & 0xffff) as u16).to_date(),
-            DosTime((self.0 >> 16) as u16).to_time(),
-        )
+        chrono::NaiveDateTime::new(DosDate(self.date).to_date(), DosTime(self.time).to_time())
+    }
+}
+
+impl From<u32> for DosDateTime {
+    fn from(datetime: u32) -> Self {
+        let date = (datetime & 0xffff) as u16;
+        let time = (datetime >> 16) as u16;
+
+        DosDateTime::new(date, time)
     }
 }
 
@@ -186,15 +180,16 @@ impl Debug for DosDateTime {
 #[cfg(test)]
 mod tests {
     use crate::timestamp::{DosDate, DosDateTime, DosTime, WinTimestamp};
+    use std::io::Cursor;
 
     #[test]
     fn test_win_timestamp() {
         let raw_timestamp: &[u8] = &[0x53, 0xC7, 0x8B, 0x18, 0xC5, 0xCC, 0xCE, 0x01];
 
-        let timestamp = WinTimestamp::from_reader(raw_timestamp).unwrap();
+        let timestamp = WinTimestamp::from_reader(&mut Cursor::new(raw_timestamp)).unwrap();
 
-        assert_eq!(format!("{}", timestamp), "2013-10-19 12:16:53.276040");
-        assert_eq!(format!("{:?}", timestamp), "2013-10-19 12:16:53.276040");
+        assert_eq!(format!("{}", timestamp), "2013-10-19 12:16:53.276040 UTC");
+        assert_eq!(format!("{:?}", timestamp), "2013-10-19 12:16:53.276040 UTC");
     }
 
     #[test]
@@ -202,16 +197,14 @@ mod tests {
         let dos_date = DosDate(16492);
 
         assert_eq!(format!("{:?}", dos_date), "2012-03-12");
-        assert_eq!(dos_date.0, 16492);
     }
 
     #[test]
     fn test_dosdate_zeros() {
         let raw_date: &[u8] = &[0x00, 0x00];
-        let date = DosDate::from_reader(raw_date).unwrap();
+        let date = DosDate::from_reader(&mut Cursor::new(raw_date)).unwrap();
         assert_eq!(format!("{}", date), "1980-01-01");
         assert_eq!(format!("{:?}", date), "1980-01-01");
-        assert_eq!(date.0, 0);
     }
 
     #[test]
@@ -219,23 +212,20 @@ mod tests {
         let dos_time = DosTime(43874);
 
         assert_eq!(format!("{:?}", dos_time), "21:27:04");
-        assert_eq!(dos_time.0, 43874);
     }
 
     #[test]
     fn test_dostime_zeros() {
         let raw_time: &[u8] = &[0x00, 0x00];
-        let time = DosTime::new(raw_time).unwrap();
+        let time = DosTime::from_reader(&mut Cursor::new(raw_time)).unwrap();
         assert_eq!(format!("{}", time), "00:00:00");
         assert_eq!(format!("{:?}", time), "00:00:00");
-        assert_eq!(time.0, 0);
     }
 
     #[test]
     fn test_dosdatetime() {
-        let dos_time = DosDateTime(2_875_342_956);
+        let dos_time = DosDateTime::from(2_875_342_956);
 
         assert_eq!(format!("{:?}", dos_time), "2012-03-12 21:27:04");
-        assert_eq!(dos_time.0, 2_875_342_956);
     }
 }

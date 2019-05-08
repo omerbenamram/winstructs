@@ -21,7 +21,7 @@ pub struct Ace {
 }
 
 impl Ace {
-    pub fn new<R: Read>(mut reader: R) -> Result<Ace, Box<dyn Error>> {
+    pub fn new<R: Read>(reader: &mut R) -> Result<Ace, Box<dyn Error>> {
         let ace_type_byte = reader.read_u8()?;
         let ace_type = AceType::from_u8(ace_type_byte)
             .ok_or_else(|| format!("Unknown AceType: {}", ace_type_byte))?;
