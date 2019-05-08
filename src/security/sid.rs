@@ -1,6 +1,6 @@
 //! SID
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-identifier
-
+use crate::err::{self, Result};
 use crate::security::authority::{Authority, SubAuthorityList};
 use byteorder::ReadBytesExt;
 use serde::ser;
@@ -16,7 +16,7 @@ pub struct Sid {
     sub_authorities: SubAuthorityList,
 }
 impl Sid {
-    pub fn new<R: Read>(reader: &mut R) -> Result<Sid, Box<dyn Error>> {
+    pub fn new<R: Read>(reader: &mut R) -> Result<Sid> {
         let revision_number = reader.read_u8()?;
         let sub_authority_count = reader.read_u8()?;
 
@@ -51,7 +51,7 @@ impl fmt::Display for Sid {
     }
 }
 impl ser::Serialize for Sid {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {

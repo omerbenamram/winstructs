@@ -1,13 +1,14 @@
+use crate::err::{self, Result};
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use serde::Serialize;
-use std::error::Error;
+
 use std::fmt;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Authority(u64);
 
 impl Authority {
-    pub fn new(buffer: &[u8]) -> Result<Authority, Box<dyn Error>> {
+    pub fn new(buffer: &[u8]) -> Result<Authority> {
         let value = BigEndian::read_u64(&[&[0x00, 0x00], &buffer[0..6]].concat());
 
         Ok(Authority(value))
@@ -23,7 +24,7 @@ impl fmt::Display for Authority {
 #[derive(Serialize, Debug, Clone)]
 pub struct SubAuthorityList(Vec<SubAuthority>);
 impl SubAuthorityList {
-    pub fn new(buffer: &[u8], count: u8) -> Result<SubAuthorityList, Box<dyn Error>> {
+    pub fn new(buffer: &[u8], count: u8) -> Result<SubAuthorityList> {
         let mut list: Vec<SubAuthority> = Vec::new();
 
         for i in 0..count {
@@ -49,7 +50,7 @@ impl SubAuthorityList {
 pub struct SubAuthority(u32);
 
 impl SubAuthority {
-    pub fn new(buffer: &[u8]) -> Result<SubAuthority, Box<dyn Error>> {
+    pub fn new(buffer: &[u8]) -> Result<SubAuthority> {
         Ok(SubAuthority(LittleEndian::read_u32(&buffer[0..4])))
     }
 

@@ -1,12 +1,13 @@
 //! ACE
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#access-control-entry-ace
-
+use crate::err::{self, Result};
 use crate::guid::Guid;
 use crate::security::sid::Sid;
 use crate::utils;
 use bitflags::bitflags;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::{ser, Serialize};
+use snafu::OptionExt;
 use std::error::Error;
 use std::fmt;
 use std::io::{Cursor, Read};
@@ -21,10 +22,11 @@ pub struct Ace {
 }
 
 impl Ace {
-    pub fn new<R: Read>(reader: &mut R) -> Result<Ace, Box<dyn Error>> {
+    pub fn new<R: Read>(reader: &mut R) -> Result<Ace> {
         let ace_type_byte = reader.read_u8()?;
-        let ace_type = AceType::from_u8(ace_type_byte)
-            .ok_or_else(|| format!("Unknown AceType: {}", ace_type_byte))?;
+        let ace_type = AceType::from_u8(ace_type_byte).context(err::UnknownAceType {
+            ace_type: ace_type_byte,
+        })?;
         let ace_flags = AceFlags::from_bits_truncate(reader.read_u8()?);
         let size = reader.read_u16::<LittleEndian>()?;
 
@@ -143,7 +145,7 @@ pub struct AceBasic {
 }
 
 impl AceBasic {
-    pub fn new<R: Read>(mut reader: R) -> Result<AceBasic, Box<dyn Error>> {
+    pub fn new<R: Read>(mut reader: R) -> Result<AceBasic> {
         let access_rights = reader.read_u32::<LittleEndian>()?;
         let sid = Sid::new(&mut reader)?;
 
@@ -160,7 +162,7 @@ pub struct AceObject {
     pub sid: Sid,
 }
 impl AceObject {
-    pub fn new<R: Read>(mut reader: R) -> Result<AceObject, Box<dyn Error>> {
+    pub fn new<R: Read>(mut reader: R) -> Result<AceObject> {
         let access_rights = reader.read_u32::<LittleEndian>()?;
         let flags = reader.read_u32::<LittleEndian>()?;
         let object_type = Guid::from_stream(&mut reader)?;
@@ -186,7 +188,7 @@ impl fmt::Debug for RawAce {
 }
 
 impl ser::Serialize for RawAce {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
@@ -210,7 +212,7 @@ impl fmt::Display for AceFlags {
 }
 
 impl ser::Serialize for AceFlags {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
@@ -236,7 +238,7 @@ impl fmt::Display for StandardAccessFlags {
 }
 
 impl ser::Serialize for StandardAccessFlags {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
@@ -268,7 +270,7 @@ impl fmt::Display for NonFolderAccessFlags {
 }
 
 impl ser::Serialize for NonFolderAccessFlags {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
@@ -300,7 +302,7 @@ impl fmt::Display for FolderAccessFlags {
     }
 }
 impl ser::Serialize for FolderAccessFlags {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {

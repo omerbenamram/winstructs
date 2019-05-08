@@ -1,8 +1,8 @@
 //! This module provides utilities for reading various NT timestamp formats.
-
+use crate::err::{self, Result};
 use byteorder::{LittleEndian, ReadBytesExt}; //Reading little endian data structs
 use chrono::{DateTime, NaiveDate, Utc};
-use std::error::Error;
+
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::io::{self, Read};
@@ -25,7 +25,7 @@ use time::Duration;
 pub struct WinTimestamp(u64);
 
 impl WinTimestamp {
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<WinTimestamp, io::Error> {
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<WinTimestamp> {
         let win_timestamp = WinTimestamp(reader.read_u64::<LittleEndian>()?);
         Ok(win_timestamp)
     }
@@ -63,7 +63,7 @@ impl DosDate {
         DosDate(date)
     }
 
-    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosDate, io::Error> {
+    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosDate> {
         Ok(DosDate::new(buffer.read_u16::<LittleEndian>()?))
     }
 
@@ -110,7 +110,7 @@ impl DosTime {
         DosTime(value)
     }
 
-    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosTime, Box<dyn Error>> {
+    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosTime> {
         Ok(DosTime::new(buffer.read_u16::<LittleEndian>()?))
     }
 
@@ -145,7 +145,7 @@ impl DosDateTime {
     pub fn new(date: u16, time: u16) -> Self {
         DosDateTime { date, time }
     }
-    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosDateTime, Box<dyn Error>> {
+    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosDateTime> {
         let date = buffer.read_u16::<LittleEndian>()?;
         let time = buffer.read_u16::<LittleEndian>()?;
 

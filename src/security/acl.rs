@@ -1,6 +1,7 @@
 //! ACL
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#access-control-list-acl
 
+use crate::err::{self, Result};
 use crate::security::ace::Ace;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::Serialize;
@@ -21,7 +22,7 @@ pub struct Acl {
 }
 
 impl Acl {
-    pub fn new<R: Read>(reader: &mut R) -> Result<Acl, Box<dyn Error>> {
+    pub fn new<R: Read>(reader: &mut R) -> Result<Acl> {
         let revision = reader.read_u8()?;
         let padding1 = reader.read_u8()?;
         let size = reader.read_u16::<LittleEndian>()?;

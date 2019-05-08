@@ -1,3 +1,4 @@
+use crate::err::Result;
 use crate::security::acl::Acl;
 use crate::security::sid::Sid;
 use crate::ReadSeek;
@@ -20,7 +21,7 @@ pub struct SecurityDescriptor {
 }
 
 impl SecurityDescriptor {
-    pub fn from_stream<S: ReadSeek>(stream: &mut S) -> Result<SecurityDescriptor, Box<dyn Error>> {
+    pub fn from_stream<S: ReadSeek>(stream: &mut S) -> Result<SecurityDescriptor> {
         let start_offset = stream.tell()?;
 
         let mut header_buf = [0; 20];
@@ -99,7 +100,7 @@ impl fmt::Display for SdControlFlags {
 }
 
 impl ser::Serialize for SdControlFlags {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
@@ -124,7 +125,7 @@ pub struct SecDescHeader {
 }
 
 impl SecDescHeader {
-    pub fn from_buffer(buffer: &[u8]) -> Result<SecDescHeader, Box<dyn Error>> {
+    pub fn from_buffer(buffer: &[u8]) -> Result<SecDescHeader> {
         let mut cursor = Cursor::new(buffer);
 
         let revision_number = cursor.read_u8()?;

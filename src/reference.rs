@@ -1,95 +1,55 @@
-use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
+use crate::err::{self, Result};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use serde::Serialize;
-use std::fmt;
-use std::fmt::{Debug, Display};
-use std::mem::transmute;
 
-// Option to display references as nested
-pub static mut NESTED_REFERENCE: bool = false;
-
-#[derive(Serialize, Debug)]
-pub struct MftEnumReference {
-    reference: u64,
-    entry: u64,
-    sequence: u16,
-}
+use std::io::Read;
 
 // Represents a MFT Reference struct
 // https://msdn.microsoft.com/en-us/library/bb470211(v=vs.85).aspx
 // https://jmharkness.wordpress.com/2011/01/27/mft-file-reference-number/
-#[derive(Serialize, Hash, Eq, PartialEq, Copy, Clone)]
-pub struct MftReference(pub u64);
+#[derive(Serialize, Debug, Hash, Eq, PartialEq, Copy, Clone)]
+pub struct MftReference {
+    pub entry: u64,
+    pub sequence: u16,
+}
 
 impl MftReference {
-    pub fn from_entry_and_seq(&mut self, entry: u64, sequence: u16) {
-        let entry_buffer: [u8; 8] = unsafe { transmute(entry.to_le()) };
-        let seq_buffer: [u8; 2] = unsafe { transmute(sequence.to_le()) };
-        let mut ref_buffer = vec![];
-        ref_buffer.extend_from_slice(&entry_buffer[0..6]);
-        ref_buffer.extend_from_slice(&seq_buffer);
-
-        self.0 = LittleEndian::read_u64(&ref_buffer[0..8]);
+    pub fn new(entry: u64, sequence: u16) -> Self {
+        MftReference { entry, sequence }
     }
-    pub fn get_from_entry_and_seq(entry: u64, sequence: u16) -> MftReference {
-        let entry_buffer: [u8; 8] = unsafe { transmute(entry.to_le()) };
-        let seq_buffer: [u8; 2] = unsafe { transmute(sequence.to_le()) };
-        let mut ref_buffer = vec![];
-        ref_buffer.extend_from_slice(&entry_buffer[0..6]);
-        ref_buffer.extend_from_slice(&seq_buffer);
 
-        MftReference(LittleEndian::read_u64(&ref_buffer[0..8]))
-    }
-    pub fn get_enum_ref(&self) -> MftEnumReference {
-        let mut raw_buffer = vec![];
-        raw_buffer.write_u64::<LittleEndian>(self.0).unwrap();
-        MftEnumReference {
-            reference: LittleEndian::read_u64(&raw_buffer[0..8]),
-            entry: LittleEndian::read_u64(&[&raw_buffer[0..6], &[0, 0]].concat()),
-            sequence: LittleEndian::read_u16(&raw_buffer[6..8]),
-        }
-    }
-    pub fn get_entry_number(&self) -> u64 {
-        let mut raw_buffer = vec![];
-        raw_buffer.write_u64::<LittleEndian>(self.0).unwrap();
-
-        LittleEndian::read_u64(&[&raw_buffer[0..6], &[0, 0]].concat())
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        Ok(Self::from(reader.read_u64::<LittleEndian>()?))
     }
 }
 
-impl Display for MftReference {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+impl From<u64> for MftReference {
+    fn from(mft_entry: u64) -> Self {
+        let as_bytes: [u8; 8] = mft_entry.to_le_bytes();
 
-impl Debug for MftReference {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        let mut entry_bytes = as_bytes[0..6].to_vec();
+        // pad the first six bytes, so read_u64 will not fail.
+        entry_bytes.extend_from_slice(&[0, 0]);
+
+        let entry = LittleEndian::read_u64(&entry_bytes);
+        let sequence = LittleEndian::read_u16(&as_bytes[6..8]);
+
+        MftReference { entry, sequence }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::reference::MftReference;
-    use byteorder::{LittleEndian, ByteOrder};
+    use std::io::Cursor;
 
     #[test]
     fn test_mft_reference() {
-        use std::mem;
-        let raw_reference: &[u8] = &[0x73, 0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0x91];
+        let raw_reference = vec![0x73, 0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0x91];
 
-        let mft_reference = MftReference(LittleEndian::read_u64(&raw_reference[0..8]));
-        assert_eq!(mft_reference.0, 10_477_624_533_077_459_059);
-        assert_eq!(format!("{}", mft_reference), "10477624533077459059");
-        // assert_eq!(mft_reference.sequence,37224);
-
-        let mft_reference_01 = MftReference::get_from_entry_and_seq(115, 37224);
-        assert_eq!(mft_reference_01.0, 10_477_624_533_077_459_059);
-
-        let mut mft_reference_02: MftReference = unsafe { mem::zeroed() };
-        assert_eq!(mft_reference_02.0, 0);
-        mft_reference_02.from_entry_and_seq(115, 37224);
-        assert_eq!(mft_reference_02.0, 10_477_624_533_077_459_059);
+        let mft_reference = MftReference::from_reader(&mut Cursor::new(raw_reference)).unwrap();
+        assert_eq!(mft_reference.entry, 115);
+        assert_eq!(mft_reference.sequence, 37224);
     }
 
 }

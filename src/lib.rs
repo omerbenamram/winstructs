@@ -4,6 +4,7 @@ pub mod guid;
 pub mod reference;
 pub mod security;
 pub mod timestamp;
+pub mod err;
 
 pub(crate) mod utils;
 

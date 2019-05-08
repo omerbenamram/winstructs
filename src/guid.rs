@@ -1,8 +1,9 @@
+use crate::err::{self, Result};
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::ser;
 use std::fmt::Write;
 use std::fmt::{self, Debug, Display};
-use std::io::{self, Read};
+use std::io::Read;
 
 #[derive(PartialOrd, PartialEq, Clone)]
 pub struct Guid {
@@ -24,7 +25,7 @@ impl Guid {
         }
     }
 
-    pub fn from_stream<T: Read>(stream: &mut T) -> io::Result<Guid> {
+    pub fn from_stream<T: Read>(stream: &mut T) -> Result<Guid> {
         let data1 = stream.read_u32::<LittleEndian>()?;
         let data2 = stream.read_u16::<LittleEndian>()?;
         let data3 = stream.read_u16::<LittleEndian>()?;
@@ -60,11 +61,11 @@ impl Guid {
 }
 
 impl ser::Serialize for Guid {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&format!("{}", self.to_string()))
+        serializer.serialize_str(&self.to_string())
     }
 }
 
