@@ -41,7 +41,7 @@ impl SubAuthorityList {
         for sa in &self.0 {
             s_vec.push(sa.to_string())
         }
-        format!("{}", s_vec.join("-"))
+        s_vec.join("-").to_string()
     }
 }
 

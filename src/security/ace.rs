@@ -190,7 +190,7 @@ impl ser::Serialize for RawAce {
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&format!("{}", utils::to_hex_string(&self.0)))
+        serializer.serialize_str(&utils::to_hex_string(&self.0).to_string())
     }
 }
 

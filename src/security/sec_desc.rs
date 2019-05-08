@@ -29,35 +29,37 @@ impl SecurityDescriptor {
         let header = SecDescHeader::from_buffer(&header_buf)?;
 
         stream.seek(SeekFrom::Start(
-            start_offset + header.owner_sid_offset as u64,
+            start_offset + u64::from(header.owner_sid_offset),
         ))?;
 
         let owner_sid = Sid::new(stream)?;
 
         stream.seek(SeekFrom::Start(
-            start_offset + header.group_sid_offset as u64,
+            start_offset + u64::from(header.group_sid_offset),
         ))?;
 
         let group_sid = Sid::new(stream)?;
 
-        let dacl = match header.dacl_offset > 0 {
-            true => {
-                stream.seek(SeekFrom::Start(start_offset + header.dacl_offset as u64))?;
-                Some(Acl::new(stream)?)
-            }
-            false => None,
+        let dacl = if header.dacl_offset > 0 {
+            stream.seek(SeekFrom::Start(
+                start_offset + u64::from(header.dacl_offset),
+            ))?;
+            Some(Acl::new(stream)?)
+        } else {
+            None
         };
 
-        let sacl = match header.sacl_offset > 0 {
-            true => {
-                debug!(
-                    "sacl at offset: {}",
-                    start_offset + header.sacl_offset as u64
-                );
-                stream.seek(SeekFrom::Start(start_offset + header.sacl_offset as u64))?;
-                Some(Acl::new(stream)?)
-            }
-            false => None,
+        let sacl = if header.sacl_offset > 0 {
+            debug!(
+                "sacl at offset: {}",
+                start_offset + u64::from(header.sacl_offset)
+            );
+            stream.seek(SeekFrom::Start(
+                start_offset + u64::from(header.sacl_offset),
+            ))?;
+            Some(Acl::new(stream)?)
+        } else {
+            None
         };
 
         Ok(SecurityDescriptor {
