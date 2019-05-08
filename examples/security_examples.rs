@@ -1,10 +1,6 @@
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-extern crate rwinstructs;
-extern crate serde_json;
 use rwinstructs::security;
 use std::io::Cursor;
+use env_logger;
 
 fn ace_example_01() {
     let buffer: &[u8] = &[
@@ -84,7 +80,7 @@ fn security_descriptor_01() {
 }
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     ace_example_01();
     acl_example_01();
     security_descriptor_01();

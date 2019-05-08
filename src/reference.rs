@@ -17,8 +17,9 @@ pub struct MftEnumReference {
 // Represents a MFT Reference struct
 // https://msdn.microsoft.com/en-us/library/bb470211(v=vs.85).aspx
 // https://jmharkness.wordpress.com/2011/01/27/mft-file-reference-number/
-#[derive(Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Serialize, Hash, Eq, PartialEq, Copy, Clone)]
 pub struct MftReference(pub u64);
+
 impl MftReference {
     pub fn from_entry_and_seq(&mut self, entry: u64, sequence: u16) {
         let entry_buffer: [u8; 8] = unsafe { transmute(entry.to_le()) };
