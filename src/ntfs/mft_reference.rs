@@ -25,14 +25,16 @@ impl MftReference {
 
 impl From<u64> for MftReference {
     fn from(mft_entry: u64) -> Self {
-        let as_bytes: [u8; 8] = mft_entry.to_le_bytes();
+        let mut as_bytes: [u8; 8] = mft_entry.to_le_bytes();
 
-        let mut entry_bytes = as_bytes[0..6].to_vec();
-        // pad the first six bytes, so read_u64 will not fail.
-        entry_bytes.extend_from_slice(&[0, 0]);
-
-        let entry = LittleEndian::read_u64(&entry_bytes);
+        // Since the entry is a u64, but is only 6 bytes, we first read the sequence,
+        // and then replace them with zeroes, since u64 are expected to be 8 bytes.
         let sequence = LittleEndian::read_u16(&as_bytes[6..8]);
+
+        as_bytes[6] = 0;
+        as_bytes[7] = 0;
+
+        let entry = LittleEndian::read_u64(&as_bytes);
 
         MftReference { entry, sequence }
     }
