@@ -1,5 +1,11 @@
 use std::io::{self, Read, Seek, SeekFrom};
 
+#[macro_use]
+extern crate num_derive;
+
+#[macro_use]
+pub(crate) mod macros;
+
 pub mod guid;
 pub mod ntfs;
 pub mod security;

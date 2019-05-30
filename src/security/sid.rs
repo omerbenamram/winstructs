@@ -1,32 +1,32 @@
 //! SID
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-identifier
-use crate::err::{Result};
+use crate::err::Result;
 use crate::security::authority::{Authority, SubAuthorityList};
 use byteorder::ReadBytesExt;
 use serde::ser;
 
 use std::fmt;
-use std::io::Read;
+use std::io::{Cursor, Read};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub struct Sid {
     revision_number: u8,
     sub_authority_count: u8,
     authority: Authority,
     sub_authorities: SubAuthorityList,
 }
+
 impl Sid {
-    pub fn new<R: Read>(reader: &mut R) -> Result<Sid> {
+    pub fn from_buffer(buffer: &[u8]) -> Result<Self> {
+        Self::from_reader(&mut Cursor::new(buffer))
+    }
+
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Sid> {
         let revision_number = reader.read_u8()?;
         let sub_authority_count = reader.read_u8()?;
 
-        let mut buf_a = [0; 6];
-        reader.read_exact(&mut buf_a)?;
-        let authority = Authority::new(&buf_a)?;
-
-        let mut buf_sa = vec![0; (sub_authority_count * 4) as usize];
-        reader.read_exact(&mut buf_sa)?;
-        let sub_authorities = SubAuthorityList::new(&buf_sa.as_slice(), sub_authority_count)?;
+        let authority = Authority::from_reader(reader)?;
+        let sub_authorities = SubAuthorityList::from_reader(reader, sub_authority_count)?;
 
         Ok(Sid {
             revision_number,
@@ -35,34 +35,32 @@ impl Sid {
             sub_authorities,
         })
     }
+}
 
-    pub fn to_string(&self) -> String {
-        format!(
-            "S-{}-{}-{}",
+impl fmt::Display for Sid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "S-{}-{}{}",
             self.revision_number,
             self.authority,
             self.sub_authorities.to_string()
         )
     }
 }
-impl fmt::Display for Sid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-}
+
 impl ser::Serialize for Sid {
     fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
     where
         S: ser::Serializer,
     {
-        serializer.serialize_str(&format!("{}", self.to_string()))
+        serializer.serialize_str(&self.to_string())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::security::sid::Sid;
-    use std::io::Cursor;
 
     #[test]
     fn test_parses_sid() {
@@ -70,7 +68,7 @@ mod tests {
             0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x12, 0x00, 0x00, 0x00,
         ];
 
-        let sid = Sid::new(&mut Cursor::new(buffer)).unwrap();
+        let sid = Sid::from_buffer(buffer).unwrap();
 
         assert_eq!(format!("{}", sid), "S-1-5-18");
     }

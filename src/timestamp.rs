@@ -5,7 +5,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 
 use std::fmt;
 use std::fmt::{Debug, Display};
-use std::io::Read;
+use std::io::{Read, Cursor};
 use time::Duration;
 
 #[derive(Clone)]
@@ -17,14 +17,19 @@ use time::Duration;
 /// # use winstructs::timestamp::WinTimestamp;
 /// let raw_timestamp: &[u8] = &[0x53, 0xC7, 0x8B, 0x18, 0xC5, 0xCC, 0xCE, 0x01];
 ///
-/// let timestamp = WinTimestamp::from_reader(raw_timestamp).unwrap();
+/// let timestamp = WinTimestamp::new(raw_timestamp).unwrap();
 ///
-/// assert_eq!(format!("{}", timestamp), "2013-10-19 12:16:53.276040");
-/// assert_eq!(format!("{:?}", timestamp), "2013-10-19 12:16:53.276040");
+/// assert_eq!(format!("{}", timestamp), "2013-10-19 12:16:53.276040 UTC");
+/// assert_eq!(format!("{:?}", timestamp), "2013-10-19 12:16:53.276040 UTC");
 /// ```
 pub struct WinTimestamp(u64);
 
 impl WinTimestamp {
+    pub fn new(buffer: &[u8]) -> Result<Self> {
+        Self::from_reader(&mut Cursor::new(buffer))
+    }
+
+    #[inline]
     pub fn from_reader<R: Read>(reader: &mut R) -> Result<WinTimestamp> {
         let win_timestamp = WinTimestamp(reader.read_u64::<LittleEndian>()?);
         Ok(win_timestamp)
@@ -67,6 +72,7 @@ impl DosDate {
         Ok(DosDate::new(buffer.read_u16::<LittleEndian>()?))
     }
 
+    #[inline]
     pub fn to_date(&self) -> chrono::NaiveDate {
         let mut day = self.0 & 0x1F;
 

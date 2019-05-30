@@ -1,7 +1,7 @@
 //! ACL
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#access-control-list-acl
 
-use crate::err::{Result};
+use crate::err::Result;
 use crate::security::ace::Ace;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::Serialize;
@@ -22,16 +22,16 @@ pub struct Acl {
 }
 
 impl Acl {
-    pub fn new<R: Read>(reader: &mut R) -> Result<Acl> {
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Acl> {
         let revision = reader.read_u8()?;
         let padding1 = reader.read_u8()?;
         let size = reader.read_u16::<LittleEndian>()?;
         let count = reader.read_u16::<LittleEndian>()?;
         let padding2 = reader.read_u16::<LittleEndian>()?;
-        let mut entries: Vec<Ace> = Vec::new();
+        let mut entries: Vec<Ace> = Vec::with_capacity(count as usize);
 
-        for _i in 0..count {
-            let ace = Ace::new(reader)?;
+        for _ in 0..count {
+            let ace = Ace::from_reader(reader)?;
             entries.push(ace);
         }
 

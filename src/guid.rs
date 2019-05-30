@@ -1,9 +1,12 @@
 use crate::err::{Result};
-use byteorder::{LittleEndian, ReadBytesExt};
-use serde::ser;
+
 use std::fmt::Write;
 use std::fmt::{self, Debug, Display};
 use std::io::Read;
+
+use byteorder::{LittleEndian, ReadBytesExt};
+use serde::ser;
+
 
 #[derive(PartialOrd, PartialEq, Clone)]
 pub struct Guid {

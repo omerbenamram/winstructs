@@ -1,17 +1,24 @@
-use crate::err::{Result};
-use byteorder::{BigEndian, ByteOrder, LittleEndian};
+use crate::err::Result;
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use serde::Serialize;
 
 use std::fmt;
+use std::io::{Cursor, Read};
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, PartialOrd, PartialEq)]
 pub struct Authority(u64);
 
 impl Authority {
-    pub fn new(buffer: &[u8]) -> Result<Authority> {
-        let value = BigEndian::read_u64(&[&[0x00, 0x00], &buffer[0..6]].concat());
+    pub fn from_buffer(buffer: &[u8]) -> Result<Self> {
+        Self::from_reader(&mut Cursor::new(buffer))
+    }
 
-        Ok(Authority(value))
+    #[inline]
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Authority> {
+        let id_high = reader.read_u32::<BigEndian>()?;
+        let id_low = reader.read_u16::<BigEndian>()?;
+
+        Ok(Authority(u64::from((id_high as u16) ^ (id_low))))
     }
 }
 
@@ -21,41 +28,47 @@ impl fmt::Display for Authority {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, PartialOrd, PartialEq)]
 pub struct SubAuthorityList(Vec<SubAuthority>);
-impl SubAuthorityList {
-    pub fn new(buffer: &[u8], count: u8) -> Result<SubAuthorityList> {
-        let mut list: Vec<SubAuthority> = Vec::new();
 
-        for i in 0..count {
-            //SubAuthority offset
-            let o: usize = (i * 4) as usize;
-            let sub = SubAuthority::new(&buffer[o..o + 4])?;
-            list.push(sub);
+impl SubAuthorityList {
+    pub fn from_buffer(buffer: &[u8], count: u8) -> Result<Self> {
+        Self::from_reader(&mut Cursor::new(buffer), count)
+    }
+
+    #[inline]
+    pub fn from_reader<R: Read>(buffer: &mut R, count: u8) -> Result<SubAuthorityList> {
+        let mut list: Vec<SubAuthority> = Vec::with_capacity(count as usize);
+
+        for _ in 0..count {
+            list.push(SubAuthority::from_reader(buffer)?)
         }
 
         Ok(SubAuthorityList(list))
     }
+}
 
-    pub fn to_string(&self) -> String {
-        let mut s_vec: Vec<String> = Vec::new();
-        for sa in &self.0 {
-            s_vec.push(sa.to_string())
+impl fmt::Display for SubAuthorityList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for element in self.0.iter() {
+            write!(f, "-{}", element).expect("Writing to a String cannot fail");
         }
-        s_vec.join("-").to_string()
+
+        Ok(())
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, PartialOrd, PartialEq)]
 pub struct SubAuthority(u32);
 
 impl SubAuthority {
-    pub fn new(buffer: &[u8]) -> Result<SubAuthority> {
-        Ok(SubAuthority(LittleEndian::read_u32(&buffer[0..4])))
+    pub fn from_buffer(buffer: &[u8]) -> Result<Self> {
+        Self::from_reader(&mut Cursor::new(buffer))
     }
 
-    pub fn to_string(&self) -> String {
-        format!("{}", self.0)
+    #[inline]
+    pub fn from_reader<R: Read>(buffer: &mut R) -> Result<SubAuthority> {
+        Ok(SubAuthority(buffer.read_u32::<LittleEndian>()?))
     }
 }
 
@@ -73,7 +86,7 @@ mod tests {
     fn test_parse_authority() {
         let buffer: &[u8] = &[0x00, 0x00, 0x00, 0x00, 0x00, 0x05];
 
-        let authority = Authority::new(&buffer).unwrap();
+        let authority = Authority::from_buffer(&buffer).unwrap();
         assert_eq!(authority.0, 5);
     }
 
@@ -81,7 +94,7 @@ mod tests {
     fn test_parse_sub_authority() {
         let buffer: &[u8] = &[0x12, 0x00, 0x00, 0x00];
 
-        let sub_authority = SubAuthority::new(&buffer).unwrap();
+        let sub_authority = SubAuthority::from_buffer(&buffer).unwrap();
         assert_eq!(sub_authority.0, 18);
     }
 
@@ -91,11 +104,10 @@ mod tests {
             0x12, 0x00, 0x00, 0x00, 0x00, 0x13, 0x18, 0x00, 0x3F, 0x00, 0x0F, 0x00,
         ];
 
-        let sub_authority = SubAuthorityList::new(&buffer, 3).unwrap();
+        let sub_authority = SubAuthorityList::from_buffer(&buffer, 3).unwrap();
 
         assert_eq!(sub_authority.0[0].0, 18);
         assert_eq!(sub_authority.0[1].0, 1_577_728);
         assert_eq!(sub_authority.0[2].0, 983_103);
     }
-
 }

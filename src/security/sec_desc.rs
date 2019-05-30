@@ -4,11 +4,10 @@ use crate::security::sid::Sid;
 use crate::ReadSeek;
 use bitflags::bitflags;
 use byteorder::{LittleEndian, ReadBytesExt};
-use log::debug;
-use serde::{ser, Serialize};
 
-use std::fmt;
-use std::io::{Cursor, SeekFrom};
+use serde::{Serialize};
+
+use std::io::{Cursor, Read, SeekFrom};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SecurityDescriptor {
@@ -24,41 +23,34 @@ impl SecurityDescriptor {
     pub fn from_stream<S: ReadSeek>(stream: &mut S) -> Result<SecurityDescriptor> {
         let start_offset = stream.tell()?;
 
-        let mut header_buf = [0; 20];
-        stream.read_exact(&mut header_buf)?;
-
-        let header = SecDescHeader::from_buffer(&header_buf)?;
+        let header = SecDescHeader::from_reader(stream)?;
 
         stream.seek(SeekFrom::Start(
             start_offset + u64::from(header.owner_sid_offset),
         ))?;
 
-        let owner_sid = Sid::new(stream)?;
+        let owner_sid = Sid::from_reader(stream)?;
 
         stream.seek(SeekFrom::Start(
             start_offset + u64::from(header.group_sid_offset),
         ))?;
 
-        let group_sid = Sid::new(stream)?;
+        let group_sid = Sid::from_reader(stream)?;
 
         let dacl = if header.dacl_offset > 0 {
             stream.seek(SeekFrom::Start(
                 start_offset + u64::from(header.dacl_offset),
             ))?;
-            Some(Acl::new(stream)?)
+            Some(Acl::from_reader(stream)?)
         } else {
             None
         };
 
         let sacl = if header.sacl_offset > 0 {
-            debug!(
-                "sacl at offset: {}",
-                start_offset + u64::from(header.sacl_offset)
-            );
             stream.seek(SeekFrom::Start(
                 start_offset + u64::from(header.sacl_offset),
             ))?;
-            Some(Acl::new(stream)?)
+            Some(Acl::from_reader(stream)?)
         } else {
             None
         };
@@ -93,20 +85,7 @@ bitflags! {
     }
 }
 
-impl fmt::Display for SdControlFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.bits())
-    }
-}
-
-impl ser::Serialize for SdControlFlags {
-    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&format!("{:?}", self))
-    }
-}
+impl_serialize_for_bitflags! {SdControlFlags}
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SecDescHeader {
@@ -125,22 +104,24 @@ pub struct SecDescHeader {
 }
 
 impl SecDescHeader {
-    pub fn from_buffer(buffer: &[u8]) -> Result<SecDescHeader> {
-        let mut cursor = Cursor::new(buffer);
+    pub fn from_buffer(buffer: &[u8]) -> Result<Self> {
+        Self::from_reader(&mut Cursor::new(buffer))
+    }
 
-        let revision_number = cursor.read_u8()?;
-        let padding1 = cursor.read_u8()?;
-        let control_flags_bytes = cursor.read_u16::<LittleEndian>()?;
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<SecDescHeader> {
+        let revision_number = reader.read_u8()?;
+        let padding1 = reader.read_u8()?;
+        let control_flags_bytes = reader.read_u16::<LittleEndian>()?;
         let control_flags = SdControlFlags::from_bits_truncate(control_flags_bytes);
-        let owner_sid_offset = cursor.read_u32::<LittleEndian>()?;
-        let group_sid_offset = cursor.read_u32::<LittleEndian>()?;
+        let owner_sid_offset = reader.read_u32::<LittleEndian>()?;
+        let group_sid_offset = reader.read_u32::<LittleEndian>()?;
 
         // Does sacl offset or dacl offset come first??
         // logicly and Zimmerman's 010 Template show dacl come first
         // but libyal and msdn documentation show dacl comes first
         // https://github.com/libyal/libfwnt/wiki/Security-Descriptor#security-descriptor-header
-        let sacl_offset = cursor.read_u32::<LittleEndian>()?;
-        let dacl_offset = cursor.read_u32::<LittleEndian>()?;
+        let sacl_offset = reader.read_u32::<LittleEndian>()?;
+        let dacl_offset = reader.read_u32::<LittleEndian>()?;
 
         Ok(SecDescHeader {
             revision_number,

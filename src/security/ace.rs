@@ -7,6 +7,8 @@ use crate::utils;
 use bitflags::bitflags;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::{ser, Serialize};
+
+use num_traits::FromPrimitive;
 use snafu::OptionExt;
 
 use std::fmt;
@@ -22,7 +24,7 @@ pub struct Ace {
 }
 
 impl Ace {
-    pub fn new<R: Read>(reader: &mut R) -> Result<Ace> {
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ace> {
         let ace_type_byte = reader.read_u8()?;
         let ace_type = AceType::from_u8(ace_type_byte).context(err::UnknownAceType {
             ace_type: ace_type_byte,
@@ -34,11 +36,10 @@ impl Ace {
         let mut data_buffer = vec![0; (size - 4) as usize];
         reader.read_exact(&mut data_buffer)?;
 
-        // Get data structure
         let data = if ace_type.is_basic() {
-            AceData::Basic(AceBasic::new(Cursor::new(data_buffer))?)
+            AceData::Basic(AceBasic::from_reader(&mut Cursor::new(data_buffer))?)
         } else if ace_type.is_object() {
-            AceData::Object(AceObject::new(Cursor::new(data_buffer))?)
+            AceData::Object(AceObject::from_reader(&mut Cursor::new(data_buffer))?)
         } else {
             AceData::Unhandled(RawAce(data_buffer))
         };
@@ -52,54 +53,31 @@ impl Ace {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(FromPrimitive, ToPrimitive, Serialize, Debug, Clone)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[repr(u8)]
 pub enum AceType {
-    AccessAllowed,
-    AccessDenied,
-    SystemAudit,
-    SystemAlarm,
-    AccessAllowedCompound,
-    AccessAllowedObject,
-    AccessDeniedObject,
-    SystemAuditObject,
-    SystemAlarmObject,
-    AccessAllowedCallback,
-    AccessDeniedCallback,
-    AccessAllowedCallbackObject,
-    AccessDeniedCallbackObject,
-    SystemAuditCallback,
-    SystemAlarmCallback,
-    SystemAuditCallbackObject,
-    SystemAlarmCallbackObject,
-    SystemMandatoryLabel,
+    AccessAllowed = 0x00,
+    AccessDenied = 0x01,
+    SystemAudit = 0x02,
+    SystemAlarm = 0x03,
+    AccessAllowedCompound = 0x04,
+    AccessAllowedObject = 0x05,
+    AccessDeniedObject = 0x06,
+    SystemAuditObject = 0x07,
+    SystemAlarmObject = 0x08,
+    AccessAllowedCallback = 0x09,
+    AccessDeniedCallback = 0x0a,
+    AccessAllowedCallbackObject = 0x0b,
+    AccessDeniedCallbackObject = 0x0c,
+    SystemAuditCallback = 0x0d,
+    SystemAlarmCallback = 0x0e,
+    SystemAuditCallbackObject = 0x0f,
+    SystemAlarmCallbackObject = 0x10,
+    SystemMandatoryLabel = 0x11,
 }
 
 impl AceType {
-    pub fn from_u8(byte: u8) -> Option<AceType> {
-        match byte {
-            0x00 => Some(AceType::AccessAllowed),
-            0x01 => Some(AceType::AccessDenied),
-            0x02 => Some(AceType::SystemAudit),
-            0x03 => Some(AceType::SystemAlarm),
-            0x04 => Some(AceType::AccessAllowedCompound),
-            0x05 => Some(AceType::AccessAllowedObject),
-            0x06 => Some(AceType::AccessDeniedObject),
-            0x07 => Some(AceType::SystemAuditObject),
-            0x08 => Some(AceType::SystemAlarmObject),
-            0x09 => Some(AceType::AccessAllowedCallback),
-            0x0a => Some(AceType::AccessDeniedCallback),
-            0x0b => Some(AceType::AccessAllowedCallbackObject),
-            0x0c => Some(AceType::AccessDeniedCallbackObject),
-            0x0d => Some(AceType::SystemAuditCallback),
-            0x0e => Some(AceType::SystemAlarmCallback),
-            0x0f => Some(AceType::SystemAuditCallbackObject),
-            0x10 => Some(AceType::SystemAlarmCallbackObject),
-            0x11 => Some(AceType::SystemMandatoryLabel),
-            _ => None,
-        }
-    }
-
     pub fn is_basic(&self) -> bool {
         match self {
             AceType::AccessAllowed
@@ -145,9 +123,9 @@ pub struct AceBasic {
 }
 
 impl AceBasic {
-    pub fn new<R: Read>(mut reader: R) -> Result<AceBasic> {
+    pub fn from_reader<R: Read>(mut reader: &mut R) -> Result<AceBasic> {
         let access_rights = reader.read_u32::<LittleEndian>()?;
-        let sid = Sid::new(&mut reader)?;
+        let sid = Sid::from_reader(&mut reader)?;
 
         Ok(AceBasic { access_rights, sid })
     }
@@ -161,13 +139,14 @@ pub struct AceObject {
     pub inherited_type: Guid,
     pub sid: Sid,
 }
+
 impl AceObject {
-    pub fn new<R: Read>(mut reader: R) -> Result<AceObject> {
+    pub fn from_reader<R: Read>(mut reader: &mut R) -> Result<AceObject> {
         let access_rights = reader.read_u32::<LittleEndian>()?;
         let flags = reader.read_u32::<LittleEndian>()?;
         let object_type = Guid::from_stream(&mut reader)?;
         let inherited_type = Guid::from_stream(&mut reader)?;
-        let sid = Sid::new(&mut reader)?;
+        let sid = Sid::from_reader(&mut reader)?;
 
         Ok(AceObject {
             access_rights,
@@ -178,6 +157,7 @@ impl AceObject {
         })
     }
 }
+
 #[derive(Clone)]
 pub struct RawAce(pub Vec<u8>);
 
@@ -205,20 +185,7 @@ bitflags! {
     }
 }
 
-impl fmt::Display for AceFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.bits())
-    }
-}
-
-impl ser::Serialize for AceFlags {
-    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&format!("{:?}", self))
-    }
-}
+impl_serialize_for_bitflags! {AceFlags}
 
 bitflags! {
     pub struct StandardAccessFlags: u32 {
@@ -231,20 +198,7 @@ bitflags! {
     }
 }
 
-impl fmt::Display for StandardAccessFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.bits())
-    }
-}
-
-impl ser::Serialize for StandardAccessFlags {
-    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&format!("{:?}", self))
-    }
-}
+impl_serialize_for_bitflags! {StandardAccessFlags}
 
 bitflags! {
     pub struct NonFolderAccessFlags: u32 {
@@ -263,20 +217,7 @@ bitflags! {
     }
 }
 
-impl fmt::Display for NonFolderAccessFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.bits())
-    }
-}
-
-impl ser::Serialize for NonFolderAccessFlags {
-    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&format!("{:?}", self))
-    }
-}
+impl_serialize_for_bitflags! {NonFolderAccessFlags}
 
 bitflags! {
     pub struct FolderAccessFlags: u32 {
@@ -296,16 +237,4 @@ bitflags! {
     }
 }
 
-impl fmt::Display for FolderAccessFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.bits())
-    }
-}
-impl ser::Serialize for FolderAccessFlags {
-    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
-    where
-        S: ser::Serializer,
-    {
-        serializer.serialize_str(&format!("{:?}", self))
-    }
-}
+impl_serialize_for_bitflags! {FolderAccessFlags}
