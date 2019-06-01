@@ -1,5 +1,7 @@
 # winstructs
-This contains some parsers for structures that are common across windows formats.
+This crate contains definitions and some parsing logic for structures that are common across windows formats.
+
+[Documentation](https://docs.rs/winstructs) 
 
 Currently supported formats:
 
