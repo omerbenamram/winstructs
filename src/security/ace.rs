@@ -144,8 +144,8 @@ impl AceObject {
     pub fn from_reader<R: Read>(mut reader: &mut R) -> Result<AceObject> {
         let access_rights = reader.read_u32::<LittleEndian>()?;
         let flags = reader.read_u32::<LittleEndian>()?;
-        let object_type = Guid::from_stream(&mut reader)?;
-        let inherited_type = Guid::from_stream(&mut reader)?;
+        let object_type = Guid::from_reader(&mut reader)?;
+        let inherited_type = Guid::from_reader(&mut reader)?;
         let sid = Sid::from_reader(&mut reader)?;
 
         Ok(AceObject {

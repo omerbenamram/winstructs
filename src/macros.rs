@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! impl_serialize_for_bitflags {
     ($flags: ident) => {
         impl serde::ser::Serialize for $flags {

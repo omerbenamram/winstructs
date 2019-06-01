@@ -2,16 +2,16 @@ use crate::err::{Result};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use serde::Serialize;
 
-use std::io::Read;
-
-// Represents a MFT Reference struct
-// https://msdn.microsoft.com/en-us/library/bb470211(v=vs.85).aspx
-// https://jmharkness.wordpress.com/2011/01/27/mft-file-reference-number/
+/// Represents a MFT Reference struct
+/// https://msdn.microsoft.com/en-us/library/bb470211(v=vs.85).aspx
+/// https://jmharkness.wordpress.com/2011/01/27/mft-file-reference-number/
 #[derive(Serialize, Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub struct MftReference {
     pub entry: u64,
     pub sequence: u16,
 }
+
+use std::io::Read;
 
 impl MftReference {
     pub fn new(entry: u64, sequence: u16) -> Self {

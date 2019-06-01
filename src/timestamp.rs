@@ -1,4 +1,4 @@
-//! This module provides utilities for reading various NT timestamp formats.
+//! Provides utilities for reading various NT timestamp formats.
 use crate::err::{Result};
 use byteorder::{LittleEndian, ReadBytesExt}; //Reading little endian data structs
 use chrono::{DateTime, NaiveDate, Utc};

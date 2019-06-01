@@ -1,3 +1,5 @@
+//! Library error types.
+
 use snafu::Snafu;
 use std::{io, result};
 

@@ -1,3 +1,6 @@
+//! Utilities for reading security identifiers.
+//! https://docs.microsoft.com/en-us/windows/desktop/secauthz/security-identifiers
+
 mod ace;
 mod acl;
 mod authority;
