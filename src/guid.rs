@@ -35,14 +35,12 @@ pub struct Guid {
 
 impl Guid {
     /// Creates a new GUID directly from it's components.
-    pub fn new(data1: u32, data2: u16, data3: u16, data4: &[u8]) -> Guid {
-        let mut data4_owned = [0; 8];
-        data4_owned.clone_from_slice(&data4[0..8]);
+    pub fn new(data1: u32, data2: u16, data3: u16, data4: [u8; 8]) -> Guid {
         Guid {
             data1,
             data2,
             data3,
-            data4: data4_owned,
+            data4,
         }
     }
 
@@ -61,9 +59,11 @@ impl Guid {
         let data1 = stream.read_u32::<LittleEndian>()?;
         let data2 = stream.read_u16::<LittleEndian>()?;
         let data3 = stream.read_u16::<LittleEndian>()?;
+
         let mut data4 = [0; 8];
         stream.read_exact(&mut data4)?;
-        Ok(Guid::new(data1, data2, data3, &data4))
+
+        Ok(Guid::new(data1, data2, data3, data4))
     }
 }
 
