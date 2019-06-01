@@ -37,7 +37,6 @@ steps:
   - script: |
       rustup component add clippy
     displayName: Install clippy
-    condition: ne( variables['Agent.OS'], 'Windows_NT' )
   - script: cargo test
     displayName: Cargo test
   - script: cargo clippy --release
