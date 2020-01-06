@@ -1,6 +1,6 @@
 //! ACE
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#access-control-entry-ace
-use crate::err::{self, Result, Error};
+use crate::err::{Error, Result};
 use crate::guid::Guid;
 use crate::security::sid::Sid;
 use crate::utils;

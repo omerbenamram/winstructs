@@ -1,4 +1,4 @@
-use crate::err::{Result};
+use crate::err::Result;
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use serde::Serialize;
 
@@ -53,5 +53,4 @@ mod tests {
         assert_eq!(mft_reference.entry, 115);
         assert_eq!(mft_reference.sequence, 37224);
     }
-
 }

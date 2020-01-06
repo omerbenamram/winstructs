@@ -1,7 +1,7 @@
 //! Library error types.
 
+use std::result;
 use thiserror::Error;
-use std::{io, result};
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -13,7 +13,5 @@ pub enum Error {
         source: std::io::Error,
     },
     #[error("Unknown AceType: {}", ace_type)]
-    UnknownAceType {
-        ace_type: u8,
-    },
+    UnknownAceType { ace_type: u8 },
 }

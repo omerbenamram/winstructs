@@ -72,5 +72,4 @@ mod tests {
 
         assert_eq!(format!("{}", sid), "S-1-5-18");
     }
-
 }

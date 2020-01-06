@@ -23,12 +23,11 @@ extern crate num_derive;
 pub(crate) mod macros;
 pub(crate) mod utils;
 
+pub mod err;
 pub mod guid;
 pub mod ntfs;
 pub mod security;
 pub mod timestamp;
-pub mod err;
-
 
 pub trait ReadSeek: Read + Seek {
     fn tell(&mut self) -> io::Result<u64> {
