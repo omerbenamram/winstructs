@@ -1,25 +1,19 @@
 //! Library error types.
 
-use snafu::Snafu;
+use thiserror::Error;
 use std::{io, result};
 
 pub type Result<T> = result::Result<T, Error>;
 
-#[derive(Debug, Snafu)]
-#[snafu(visibility(pub(crate)))]
+#[derive(Debug, Error)]
 pub enum Error {
-    #[snafu(display("An I/O error has occurred: {}", "source"))]
+    #[error("An I/O error has occurred")]
     IoError {
+        #[from]
         source: std::io::Error,
     },
-    #[snafu(display("Unknown AceType: {}", ace_type))]
+    #[error("Unknown AceType: {}", ace_type)]
     UnknownAceType {
         ace_type: u8,
     },
-}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Error::IoError { source: err }
-    }
 }

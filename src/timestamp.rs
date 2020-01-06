@@ -1,12 +1,11 @@
 //! Provides utilities for reading various NT timestamp formats.
 use crate::err::{Result};
 use byteorder::{LittleEndian, ReadBytesExt}; //Reading little endian data structs
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, NaiveDate, Utc, Duration};
 
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::io::{Read, Cursor};
-use time::Duration;
 
 #[derive(Clone)]
 /// https://docs.microsoft.com/en-us/windows/desktop/api/minwinbase/ns-minwinbase-filetime
