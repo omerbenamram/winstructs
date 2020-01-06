@@ -5,7 +5,7 @@ use crate::ReadSeek;
 use bitflags::bitflags;
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use serde::{Serialize};
+use serde::Serialize;
 
 use std::io::{Cursor, Read, SeekFrom};
 

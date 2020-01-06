@@ -1,6 +1,6 @@
 //! ACE
 //! https://github.com/libyal/libfwnt/wiki/Security-Descriptor#access-control-entry-ace
-use crate::err::{self, Result};
+use crate::err::{Error, Result};
 use crate::guid::Guid;
 use crate::security::sid::Sid;
 use crate::utils;
@@ -9,7 +9,6 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use serde::{ser, Serialize};
 
 use num_traits::FromPrimitive;
-use snafu::OptionExt;
 
 use std::fmt;
 use std::io::{Cursor, Read};
@@ -26,9 +25,10 @@ pub struct Ace {
 impl Ace {
     pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ace> {
         let ace_type_byte = reader.read_u8()?;
-        let ace_type = AceType::from_u8(ace_type_byte).context(err::UnknownAceType {
+        let ace_type = AceType::from_u8(ace_type_byte).ok_or_else(|| Error::UnknownAceType {
             ace_type: ace_type_byte,
         })?;
+
         let ace_flags = AceFlags::from_bits_truncate(reader.read_u8()?);
         let size = reader.read_u16::<LittleEndian>()?;
 
