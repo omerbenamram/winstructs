@@ -7,7 +7,7 @@ use std::fmt;
 use std::fmt::{Debug, Display};
 use std::io::{Cursor, Read};
 
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 /// https://docs.microsoft.com/en-us/windows/desktop/api/minwinbase/ns-minwinbase-filetime
 /// Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC).
 /// # Example
@@ -58,7 +58,7 @@ impl Debug for WinTimestamp {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 /// MS-DOS date and MS-DOS time are packed 16-bit values that specify the month, day, year, and time of day an MS-DOS file was last written to.
 pub struct DosDate(u16);
 
@@ -107,7 +107,7 @@ impl Debug for DosDate {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 /// MS-DOS date and MS-DOS time are packed 16-bit values that specify the month, day, year, and time of day an MS-DOS file was last written to.
 pub struct DosTime(u16);
 impl DosTime {
@@ -140,7 +140,7 @@ impl Debug for DosTime {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub struct DosDateTime {
     date: u16,
     time: u16,
@@ -198,10 +198,25 @@ mod tests {
     }
 
     #[test]
+    fn test_win_partialeq() {
+        let raw_timestamp: &[u8] = &[0x53, 0xC7, 0x8B, 0x18, 0xC5, 0xCC, 0xCE, 0x01];
+        let timestamp_a = WinTimestamp::from_reader(&mut Cursor::new(raw_timestamp)).unwrap();
+        let timestamp_b = WinTimestamp::from_reader(&mut Cursor::new(raw_timestamp)).unwrap();
+        assert_eq!(timestamp_a, timestamp_b);
+    }
+
+    #[test]
     fn test_dosdate() {
         let dos_date = DosDate(16492);
 
         assert_eq!(format!("{:?}", dos_date), "2012-03-12");
+    }
+
+    #[test]
+    fn test_dosdate_partialeq() {
+        let dos_date_a = DosDate(16492);
+        let dos_date_b = DosDate(16492);
+        assert_eq!(dos_date_a,dos_date_b);
     }
 
     #[test]
@@ -217,6 +232,13 @@ mod tests {
         let dos_time = DosTime(43874);
 
         assert_eq!(format!("{:?}", dos_time), "21:27:04");
+    }
+
+    #[test]
+    fn test_dostime_partialeq() {
+        let dos_time_a = DosTime(43874);
+        let dos_time_b = DosTime(43874);
+        assert_eq!(dos_time_a,dos_time_b);
     }
 
     #[test]
