@@ -93,6 +93,10 @@ impl DosDate {
     pub fn to_date_formatted(&self, format: &str) -> String {
         self.to_date().format(format).to_string()
     }
+
+    pub fn to_u16(&self) -> u16 {
+        self.0
+    }
 }
 
 impl Display for DosDate {
@@ -125,6 +129,10 @@ impl DosTime {
         let hour = (self.0 >> 11) & 0x1F;
 
         chrono::NaiveTime::from_hms(u32::from(hour), u32::from(min), u32::from(sec))
+    }
+
+    pub fn to_u16(&self) -> u16 {
+        self.0
     }
 }
 
@@ -205,6 +213,15 @@ mod tests {
     }
 
     #[test]
+    fn test_dosdate_roundtrip() {
+        let input = 43874;
+        let dos_time = DosDate(input);
+        let output = dos_time.to_u16();
+
+        assert_eq!(input, output);
+    }
+
+    #[test]
     fn test_dosdate_zeros() {
         let raw_date: &[u8] = &[0x00, 0x00];
         let date = DosDate::from_reader(&mut Cursor::new(raw_date)).unwrap();
@@ -217,6 +234,15 @@ mod tests {
         let dos_time = DosTime(43874);
 
         assert_eq!(format!("{:?}", dos_time), "21:27:04");
+    }
+
+    #[test]
+    fn test_dostime_roundtrip() {
+        let input = 43874;
+        let dos_time = DosTime(input);
+        let output = dos_time.to_u16();
+
+        assert_eq!(input, output);
     }
 
     #[test]
