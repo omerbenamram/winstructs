@@ -28,6 +28,10 @@ impl WinTimestamp {
         Self::from_reader(&mut Cursor::new(buffer))
     }
 
+    pub fn from_u64(value: u64) -> Self {
+        WinTimestamp(value)
+    }
+
     #[inline]
     pub fn from_reader<R: Read>(reader: &mut R) -> Result<WinTimestamp> {
         let win_timestamp = WinTimestamp(reader.read_u64::<LittleEndian>()?);
