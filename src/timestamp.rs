@@ -71,6 +71,14 @@ impl DosDate {
         Ok(DosDate::new(buffer.read_u16::<LittleEndian>()?))
     }
 
+    pub fn from_parts(year: u16, month: u8, day: u8) -> Self {
+        let year = (year - 1980 as u16) << 9;
+        let month = (month as u16) << 5 & 0b00000001110000;
+        let day = (day as u16) & 0x1F;
+        let date = year + month + day;
+        DosDate(date)
+    }
+
     #[inline]
     pub fn to_date(&self) -> chrono::NaiveDate {
         let mut day = self.0 & 0x1F;
@@ -121,6 +129,14 @@ impl DosTime {
 
     pub fn from_reader<R: Read>(buffer: &mut R) -> Result<DosTime> {
         Ok(DosTime::new(buffer.read_u16::<LittleEndian>()?))
+    }
+
+    pub fn from_parts(hours: u8, minutes: u8, two_second_increments: u8) -> Self {
+        let hours = (hours as u16) << 11;
+        let minutes = (minutes as u16) << 5 & 0x3E0;
+        let sec = (two_second_increments as u16) & 0x1F;
+        let time = hours + minutes + sec;
+        DosTime(time)
     }
 
     pub fn to_time(&self) -> chrono::NaiveTime {
@@ -213,6 +229,13 @@ mod tests {
     }
 
     #[test]
+    fn test_dosdate_from_parts() {
+        let dos_date = DosDate::from_parts(2012, 03, 12);
+
+        assert_eq!(format!("{:?}", dos_date), "2012-03-12");
+    }
+
+    #[test]
     fn test_dosdate_roundtrip() {
         let input = 43874;
         let dos_time = DosDate(input);
@@ -232,6 +255,13 @@ mod tests {
     #[test]
     fn test_dostime() {
         let dos_time = DosTime(43874);
+
+        assert_eq!(format!("{:?}", dos_time), "21:27:04");
+    }
+
+    #[test]
+    fn test_dostime_from_parts() {
+        let dos_time = DosTime::from_parts(21, 27, 2);
 
         assert_eq!(format!("{:?}", dos_time), "21:27:04");
     }
