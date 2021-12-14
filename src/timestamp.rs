@@ -6,8 +6,9 @@ use chrono::{DateTime, Duration, NaiveDate, Utc};
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::io::{Cursor, Read};
+use serde::Serialize;
 
-#[derive(Clone)]
+#[derive(Serialize, Clone)]
 /// https://docs.microsoft.com/en-us/windows/desktop/api/minwinbase/ns-minwinbase-filetime
 /// Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC).
 /// # Example
@@ -28,6 +29,10 @@ impl WinTimestamp {
         Self::from_reader(&mut Cursor::new(buffer))
     }
 
+    pub fn from(value: u64) -> Self {
+        Self(value)
+    }
+
     #[inline]
     pub fn from_reader<R: Read>(reader: &mut R) -> Result<WinTimestamp> {
         let win_timestamp = WinTimestamp(reader.read_u64::<LittleEndian>()?);
@@ -43,6 +48,10 @@ impl WinTimestamp {
                 + Duration::microseconds((nanos_since_windows_epoch / 10) as i64),
             Utc,
         )
+    }
+
+    pub fn value(&self) -> u64 {
+        self.0
     }
 }
 
