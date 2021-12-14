@@ -4,6 +4,7 @@ use crate::security::sid::Sid;
 use crate::ReadSeek;
 use bitflags::bitflags;
 use byteorder::{LittleEndian, ReadBytesExt};
+use trace_error::backtrace;
 
 use serde::Serialize;
 
@@ -132,6 +133,29 @@ impl SecDescHeader {
             sacl_offset,
             dacl_offset,
         })
+    }
+}
+
+
+#[derive(Debug,Clone)]
+pub enum SdErrorKind {
+    IoError,
+    ValidationError
+}
+
+#[derive(Debug,Clone)]
+pub struct SecDescError {
+    pub message: String,
+    pub kind: SdErrorKind,
+    pub trace: String   
+}
+impl From<std::io::Error> for SecDescError {
+    fn from(err: std::io::Error) -> Self {
+        SecDescError {
+            message: format!("{}",err),
+            kind: SdErrorKind::IoError,
+            trace: backtrace!()
+        }
     }
 }
 
