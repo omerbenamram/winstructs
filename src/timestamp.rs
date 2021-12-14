@@ -45,6 +45,10 @@ impl WinTimestamp {
             Utc,
         )
     }
+
+    pub fn value(&self) -> u64 {
+        self.0
+    }
 }
 
 impl Display for WinTimestamp {
