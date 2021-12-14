@@ -7,7 +7,7 @@ use std::fmt;
 use std::fmt::{Debug, Display};
 use std::io::{Cursor, Read};
 
-#[derive(Clone)]
+#[derive(Serialize, Clone)]
 /// https://docs.microsoft.com/en-us/windows/desktop/api/minwinbase/ns-minwinbase-filetime
 /// Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC).
 /// # Example
