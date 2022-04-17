@@ -75,6 +75,10 @@ pub enum AceType {
     SystemAuditCallbackObject = 0x0f,
     SystemAlarmCallbackObject = 0x10,
     SystemMandatoryLabel = 0x11,
+    SystemResourceAttribute = 0x12,
+    SystemScopedPolicyID = 0x13,
+    SystemProcessTrustLabel = 0x14,
+    SystemAccessFilter = 0x15,
 }
 
 impl AceType {
@@ -88,7 +92,11 @@ impl AceType {
             | AceType::AccessDeniedCallback
             | AceType::SystemAuditCallback
             | AceType::SystemAlarmCallback
-            | AceType::SystemMandatoryLabel => true,
+            | AceType::SystemMandatoryLabel
+            | AceType::SystemResourceAttribute
+            | AceType::SystemScopedPolicyID
+            | AceType::SystemProcessTrustLabel
+            | AceType::SystemAccessFilter => true,
             _ => false,
         }
     }
