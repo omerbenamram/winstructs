@@ -1,12 +1,12 @@
 [package]
 name = "winstructs"
 description = "Common structures used in parsing various windows protocols"
-homepage = "https://github.com/omerbenamram/winstructs"
-repository = "https://github.com/omerbenamram/winstrcuts"
+homepage = "https://github.com/omerbenamram/winstructs/tree/master"
+repository = "https://github.com/omerbenamram/winstructs/tree/master"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 
-version = "0.3.1-alpha.0"
+version = "0.3.1"
 authors = ["Omer Ben-Amram <omerbenamram@gmail.com>", "Matthew Seyer <matthew.seyer@gmail.com>"]
 edition = "2018"
 
@@ -20,4 +20,4 @@ env_logger = "0.7"
 num-traits = "0.2"
 num-derive = "0.3"
 thiserror = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", default-features = false, features = ["serde", "std"] }
