@@ -39,8 +39,7 @@ impl WinTimestamp {
 
         // Add microseconds to timestamp via Duration
         DateTime::from_utc(
-            NaiveDate::from_ymd(1601, 1, 1).and_hms_nano(0, 0, 0, 0)
-                + Duration::microseconds((nanos_since_windows_epoch / 10) as i64),
+            NaiveDate::from_ymd_opt(1601, 1, 1).and_then(|x| x.and_hms_nano_opt(0, 0, 0, 0)).expect("to_datetime() should work") + Duration::microseconds((nanos_since_windows_epoch / 10) as i64),
             Utc,
         )
     }
@@ -87,7 +86,7 @@ impl DosDate {
 
         let year = (self.0 >> 9) + 1980;
 
-        chrono::NaiveDate::from_ymd(i32::from(year), u32::from(month), u32::from(day))
+        chrono::NaiveDate::from_ymd_opt(i32::from(year), u32::from(month), u32::from(day)).expect("to_date() should work")
     }
 
     pub fn to_date_formatted(&self, format: &str) -> String {
@@ -124,7 +123,7 @@ impl DosTime {
         let min = (self.0 >> 5) & 0x3F;
         let hour = (self.0 >> 11) & 0x1F;
 
-        chrono::NaiveTime::from_hms(u32::from(hour), u32::from(min), u32::from(sec))
+        chrono::NaiveTime::from_hms_opt(u32::from(hour), u32::from(min), u32::from(sec)).expect("to_time() should work")
     }
 }
 
