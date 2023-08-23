@@ -70,6 +70,14 @@ impl DosDate {
         Ok(DosDate::new(buffer.read_u16::<LittleEndian>()?))
     }
 
+    pub fn from_parts(year: u16, month: u8, day: u8) -> Self {
+        let year = (year - 1980 as u16) << 9;
+        let month = (month as u16) << 5 & 0b00000001110000;
+        let day = (day as u16) & 0x1F;
+        let date = year + month + day;
+        DosDate(date)
+    }
+
     #[inline]
     pub fn to_date(&self) -> chrono::NaiveDate {
         let mut day = self.0 & 0x1F;
@@ -91,6 +99,10 @@ impl DosDate {
 
     pub fn to_date_formatted(&self, format: &str) -> String {
         self.to_date().format(format).to_string()
+    }
+
+    pub fn to_u16(&self) -> u16 {
+        self.0
     }
 }
 
@@ -118,12 +130,24 @@ impl DosTime {
         Ok(DosTime::new(buffer.read_u16::<LittleEndian>()?))
     }
 
+    pub fn from_parts(hours: u8, minutes: u8, two_second_increments: u8) -> Self {
+        let hours = (hours as u16) << 11;
+        let minutes = (minutes as u16) << 5 & 0x3E0;
+        let sec = (two_second_increments as u16) & 0x1F;
+        let time = hours + minutes + sec;
+        DosTime(time)
+    }
+
     pub fn to_time(&self) -> chrono::NaiveTime {
         let sec = (self.0 & 0x1F) * 2;
         let min = (self.0 >> 5) & 0x3F;
         let hour = (self.0 >> 11) & 0x1F;
 
         chrono::NaiveTime::from_hms_opt(u32::from(hour), u32::from(min), u32::from(sec)).expect("to_time() should work")
+    }
+
+    pub fn to_u16(&self) -> u16 {
+        self.0
     }
 }
 
@@ -204,6 +228,22 @@ mod tests {
     }
 
     #[test]
+    fn test_dosdate_from_parts() {
+        let dos_date = DosDate::from_parts(2012, 03, 12);
+
+        assert_eq!(format!("{:?}", dos_date), "2012-03-12");
+    }
+
+    #[test]
+    fn test_dosdate_roundtrip() {
+        let input = 43874;
+        let dos_time = DosDate(input);
+        let output = dos_time.to_u16();
+
+        assert_eq!(input, output);
+    }
+
+    #[test]
     fn test_dosdate_zeros() {
         let raw_date: &[u8] = &[0x00, 0x00];
         let date = DosDate::from_reader(&mut Cursor::new(raw_date)).unwrap();
@@ -216,6 +256,22 @@ mod tests {
         let dos_time = DosTime(43874);
 
         assert_eq!(format!("{:?}", dos_time), "21:27:04");
+    }
+
+    #[test]
+    fn test_dostime_from_parts() {
+        let dos_time = DosTime::from_parts(21, 27, 2);
+
+        assert_eq!(format!("{:?}", dos_time), "21:27:04");
+    }
+
+    #[test]
+    fn test_dostime_roundtrip() {
+        let input = 43874;
+        let dos_time = DosTime(input);
+        let output = dos_time.to_u16();
+
+        assert_eq!(input, output);
     }
 
     #[test]
