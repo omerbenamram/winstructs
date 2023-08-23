@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/omerbenamram/winstructs/actions/workflows/pipeline.yml/badge.svg)](https://github.com/voidbar/winstructs/actions)
+[![Build Status](https://github.com/omerbenamram/winstructs/actions/workflows/pipeline.yml/badge.svg)](https://github.com/omerbenamram/winstructs/actions)
 [![crates.io](https://img.shields.io/crates/v/winstructs.svg)](https://docs.rs/winstructs/latest/winstructs/)
 
 # winstructs
