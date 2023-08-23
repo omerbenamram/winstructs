@@ -1,4 +1,5 @@
-![crates.io](https://img.shields.io/crates/v/winstructs.svg)
+[![Build Status](https://github.com/omerbenamram/winstructs/actions/workflows/pipeline.yml/badge.svg)](https://github.com/voidbar/winstructs/actions)
+[![crates.io](https://img.shields.io/crates/v/winstructs.svg)](https://docs.rs/winstructs/latest/winstructs/)
 
 # winstructs
 This crate contains definitions and some parsing logic for structures that are common across windows formats.
